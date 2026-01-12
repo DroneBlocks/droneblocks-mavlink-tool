@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DroneBlocks MAVLink Tool</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+        header {
+            background: #16213e;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #0f3460;
+        }
+        h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #e94560;
+        }
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #666;
+        }
+        .status-dot.connected {
+            background: #4ade80;
+        }
+        .status-text {
+            font-size: 0.875rem;
+            color: #999;
+        }
+        button {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #d63d56;
+        }
+        button:disabled {
+            background: #444;
+            cursor: not-allowed;
+        }
+        button.secondary {
+            background: #0f3460;
+        }
+        button.secondary:hover {
+            background: #1a4a7a;
+        }
+        .tabs {
+            display: flex;
+            background: #16213e;
+            border-bottom: 1px solid #0f3460;
+        }
+        .tab {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            color: #999;
+            transition: all 0.2s;
+        }
+        .tab:hover {
+            color: #eee;
+        }
+        .tab.active {
+            color: #e94560;
+            border-bottom-color: #e94560;
+        }
+        main {
+            padding: 1.5rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .panel {
+            display: none;
+        }
+        .panel.active {
+            display: block;
+        }
+
+        /* Parameters Panel */
+        .params-toolbar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        .search-input {
+            flex: 1;
+            max-width: 400px;
+            padding: 0.5rem 1rem;
+            border: 1px solid #0f3460;
+            border-radius: 4px;
+            background: #16213e;
+            color: #eee;
+            font-size: 0.875rem;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+        .params-info {
+            color: #666;
+            font-size: 0.875rem;
+        }
+        .params-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+        .params-table th {
+            text-align: left;
+            padding: 0.75rem;
+            background: #16213e;
+            border-bottom: 1px solid #0f3460;
+            color: #999;
+            font-weight: 500;
+        }
+        .params-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #0f3460;
+        }
+        .params-table tr:hover {
+            background: #16213e;
+        }
+        .param-name {
+            font-family: 'SF Mono', Monaco, monospace;
+            color: #4ade80;
+        }
+        .param-value {
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        .param-input {
+            width: 120px;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid #0f3460;
+            border-radius: 4px;
+            background: #1a1a2e;
+            color: #eee;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.875rem;
+        }
+        .param-input:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+        .set-btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+
+        /* Console Panel */
+        .console-container {
+            background: #0d0d1a;
+            border: 1px solid #0f3460;
+            border-radius: 4px;
+            height: calc(100vh - 250px);
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+        .console-output {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .console-input-line {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: #16213e;
+            border-top: 1px solid #0f3460;
+        }
+        .console-prompt {
+            color: #e94560;
+            margin-right: 0.5rem;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        .console-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #eee;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.875rem;
+        }
+        .console-input:focus {
+            outline: none;
+        }
+
+        /* Loading state */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #333;
+            border-top-color: #e94560;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+
+        /* Inspector Panel */
+        .inspector-container {
+            display: flex;
+            gap: 1rem;
+            height: calc(100vh - 200px);
+            min-height: 500px;
+        }
+        .inspector-list {
+            width: 300px;
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 4px;
+            overflow-y: auto;
+        }
+        .inspector-list-header {
+            padding: 0.75rem 1rem;
+            background: #0f3460;
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: #999;
+            position: sticky;
+            top: 0;
+        }
+        .msg-item {
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid #0f3460;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+            transition: background 0.2s;
+        }
+        .msg-item:hover {
+            background: #1a1a2e;
+        }
+        .msg-item.selected {
+            background: #0f3460;
+            border-left: 3px solid #e94560;
+        }
+        .msg-name {
+            font-family: 'SF Mono', Monaco, monospace;
+            color: #4ade80;
+        }
+        .msg-hz {
+            color: #999;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        .inspector-detail {
+            flex: 1;
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 4px;
+            overflow-y: auto;
+        }
+        .inspector-detail-header {
+            padding: 0.75rem 1rem;
+            background: #0f3460;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+        }
+        .inspector-detail-title {
+            font-family: 'SF Mono', Monaco, monospace;
+            color: #e94560;
+        }
+        .inspector-detail-hz {
+            color: #4ade80;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.875rem;
+        }
+        .inspector-fields {
+            padding: 1rem;
+        }
+        .field-row {
+            display: flex;
+            padding: 0.35rem 0;
+            border-bottom: 1px solid #0f3460;
+            font-size: 0.875rem;
+        }
+        .field-name {
+            width: 200px;
+            color: #999;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        .field-value {
+            flex: 1;
+            font-family: 'SF Mono', Monaco, monospace;
+            color: #eee;
+            word-break: break-all;
+        }
+        .field-value.array {
+            color: #60a5fa;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>DroneBlocks MAVLink Tool</h1>
+        <div class="status">
+            <div class="status-dot" id="statusDot"></div>
+            <span class="status-text" id="statusText">Disconnected</span>
+            <button id="connectBtn" onclick="toggleConnection()">Connect</button>
+        </div>
+    </header>
+
+    <div class="tabs">
+        <div class="tab active" data-panel="params" onclick="switchTab('params')">Parameters</div>
+        <div class="tab" data-panel="console" onclick="switchTab('console')">Console</div>
+        <div class="tab" data-panel="inspector" onclick="switchTab('inspector')">Inspector</div>
+    </div>
+
+    <main>
+        <!-- Parameters Panel -->
+        <div class="panel active" id="params-panel">
+            <div class="params-toolbar">
+                <input type="text" class="search-input" id="searchInput" placeholder="Search parameters..." oninput="filterParams()">
+                <button class="secondary" onclick="refreshParams()" id="refreshBtn">Refresh</button>
+                <span class="params-info" id="paramsInfo">0 parameters</span>
+            </div>
+            <table class="params-table">
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Value</th>
+                        <th>Set</th>
+                    </tr>
+                </thead>
+                <tbody id="paramsBody">
+                    <tr>
+                        <td colspan="3" class="empty-state">Connect to load parameters</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Console Panel -->
+        <div class="panel" id="console-panel">
+            <div class="console-container">
+                <div class="console-output" id="consoleOutput">Connect and type a command to get started.\n\nTry commands like:\n  mavlink status\n  param show\n  dmesg\n</div>
+                <div class="console-input-line">
+                    <span class="console-prompt">nsh&gt;</span>
+                    <input type="text" class="console-input" id="consoleInput" placeholder="Enter command..." onkeydown="handleConsoleKey(event)" disabled>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inspector Panel -->
+        <div class="panel" id="inspector-panel">
+            <div class="inspector-container">
+                <div class="inspector-list">
+                    <div class="inspector-list-header">Messages</div>
+                    <div id="msgList">
+                        <div class="empty-state">No messages yet</div>
+                    </div>
+                </div>
+                <div class="inspector-detail">
+                    <div class="inspector-detail-header">
+                        <span class="inspector-detail-title" id="detailTitle">Select a message</span>
+                        <span class="inspector-detail-hz" id="detailHz"></span>
+                    </div>
+                    <div class="inspector-fields" id="detailFields">
+                        <div class="empty-state">Click a message type to view its fields</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let connected = false;
+        let params = {};
+        let ws = null;
+        let commandHistory = [];
+        let historyIndex = -1;
+        let selectedMsgType = null;
+        let inspectorInterval = null;
+
+        // Tab switching
+        function switchTab(panel) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelector(`.tab[data-panel="${panel}"]`).classList.add('active');
+            document.getElementById(`${panel}-panel`).classList.add('active');
+
+            // Connect/disconnect WebSocket based on console tab
+            if (panel === 'console' && connected && !ws) {
+                connectWebSocket();
+            } else if (panel !== 'console' && ws) {
+                disconnectWebSocket();
+            }
+
+            // Start/stop inspector polling based on tab
+            if (panel === 'inspector') {
+                startInspectorPolling();
+            } else {
+                stopInspectorPolling();
+            }
+        }
+
+        // Connection management
+        async function toggleConnection() {
+            const btn = document.getElementById('connectBtn');
+            btn.disabled = true;
+
+            try {
+                if (connected) {
+                    await fetch('/api/disconnect', { method: 'POST' });
+                    disconnectWebSocket();
+                } else {
+                    const response = await fetch('/api/connect', { method: 'POST' });
+                    if (response.ok) {
+                        await refreshParams();
+                    }
+                }
+            } catch (e) {
+                console.error('Connection error:', e);
+            }
+
+            await updateStatus();
+            btn.disabled = false;
+        }
+
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                connected = data.connected;
+                const dot = document.getElementById('statusDot');
+                const text = document.getElementById('statusText');
+                const btn = document.getElementById('connectBtn');
+                const consoleInput = document.getElementById('consoleInput');
+
+                if (connected) {
+                    dot.classList.add('connected');
+                    text.textContent = `System ${data.target_system}`;
+                    btn.textContent = 'Disconnect';
+                    consoleInput.disabled = false;
+                } else {
+                    dot.classList.remove('connected');
+                    text.textContent = 'Disconnected';
+                    btn.textContent = 'Connect';
+                    consoleInput.disabled = true;
+                }
+            } catch (e) {
+                console.error('Status error:', e);
+            }
+        }
+
+        // Parameters
+        async function refreshParams() {
+            const btn = document.getElementById('refreshBtn');
+            const info = document.getElementById('paramsInfo');
+            btn.disabled = true;
+            info.innerHTML = '<span class="loading"></span> Loading...';
+
+            try {
+                await fetch('/api/params/refresh', { method: 'POST' });
+                const response = await fetch('/api/params');
+                const data = await response.json();
+
+                params = data.params;
+                renderParams();
+                info.textContent = `${Object.keys(params).length} parameters`;
+            } catch (e) {
+                console.error('Refresh error:', e);
+                info.textContent = 'Error loading parameters';
+            }
+
+            btn.disabled = false;
+        }
+
+        function renderParams() {
+            const tbody = document.getElementById('paramsBody');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+
+            const filtered = Object.entries(params)
+                .filter(([name]) => name.toLowerCase().includes(search))
+                .sort((a, b) => a[0].localeCompare(b[0]));
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No parameters found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(([name, info]) => {
+                const displayValue = info.value === null ? 'NaN' : info.value;
+                const inputValue = info.value === null ? '' : info.value;
+                return `
+                <tr>
+                    <td class="param-name">${escapeHtml(name)}</td>
+                    <td class="param-value" style="${info.value === null ? 'color: #666;' : ''}">${displayValue}</td>
+                    <td>
+                        <input type="number" class="param-input" id="input-${name}" value="${inputValue}" step="any" placeholder="${info.value === null ? 'NaN' : ''}">
+                        <button class="set-btn" onclick="setParam('${name}')">Set</button>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        function filterParams() {
+            renderParams();
+        }
+
+        async function setParam(name) {
+            const input = document.getElementById(`input-${name}`);
+            const value = parseFloat(input.value);
+
+            if (isNaN(value)) {
+                alert('Invalid value');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/params/${encodeURIComponent(name)}?value=${value}`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    params[name].value = data.value;
+                    renderParams();
+                } else {
+                    alert('Failed to set parameter');
+                }
+            } catch (e) {
+                console.error('Set param error:', e);
+                alert('Error setting parameter');
+            }
+        }
+
+        // Console WebSocket
+        function connectWebSocket() {
+            if (ws) return;
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws/console`);
+
+            ws.onopen = () => {
+                appendConsole('\n--- Connected to MAVLink shell ---\n');
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.output) {
+                    appendConsole(data.output);
+                }
+                if (data.error) {
+                    appendConsole(`\nError: ${data.error}\n`);
+                }
+            };
+
+            ws.onclose = () => {
+                appendConsole('\n--- Disconnected from shell ---\n');
+                ws = null;
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                appendConsole('\n--- WebSocket error ---\n');
+            };
+        }
+
+        function disconnectWebSocket() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function appendConsole(text) {
+            const output = document.getElementById('consoleOutput');
+            // Strip ANSI escape codes for cleaner output
+            const cleanText = text.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+            output.textContent += cleanText;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function handleConsoleKey(event) {
+            const input = document.getElementById('consoleInput');
+
+            if (event.key === 'Enter') {
+                const command = input.value;
+                if (command.trim()) {
+                    commandHistory.push(command);
+                    historyIndex = commandHistory.length;
+                }
+
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ command }));
+                }
+
+                input.value = '';
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    input.value = commandHistory[historyIndex];
+                }
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    input.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    input.value = '';
+                }
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Inspector functions
+        function startInspectorPolling() {
+            if (inspectorInterval) return;
+            refreshInspector();
+            inspectorInterval = setInterval(refreshInspector, 500);
+        }
+
+        function stopInspectorPolling() {
+            if (inspectorInterval) {
+                clearInterval(inspectorInterval);
+                inspectorInterval = null;
+            }
+        }
+
+        async function refreshInspector() {
+            try {
+                const response = await fetch('/api/inspector');
+                const data = await response.json();
+                renderMsgList(data.messages);
+
+                // Also refresh selected message details
+                if (selectedMsgType) {
+                    await refreshMsgDetail(selectedMsgType);
+                }
+            } catch (e) {
+                console.error('Inspector error:', e);
+            }
+        }
+
+        function renderMsgList(messages) {
+            const list = document.getElementById('msgList');
+
+            if (!messages || messages.length === 0) {
+                list.innerHTML = '<div class="empty-state">No messages yet</div>';
+                return;
+            }
+
+            list.innerHTML = messages.map(msg => `
+                <div class="msg-item ${msg.type === selectedMsgType ? 'selected' : ''}"
+                     onclick="selectMessage('${msg.type}')">
+                    <span class="msg-name">${msg.type}</span>
+                    <span class="msg-hz">${msg.hz} Hz</span>
+                </div>
+            `).join('');
+        }
+
+        async function selectMessage(msgType) {
+            selectedMsgType = msgType;
+
+            // Update selection UI
+            document.querySelectorAll('.msg-item').forEach(el => {
+                el.classList.toggle('selected', el.querySelector('.msg-name').textContent === msgType);
+            });
+
+            await refreshMsgDetail(msgType);
+        }
+
+        async function refreshMsgDetail(msgType) {
+            try {
+                const response = await fetch(`/api/inspector/${encodeURIComponent(msgType)}`);
+                const data = await response.json();
+
+                document.getElementById('detailTitle').textContent = data.type;
+                document.getElementById('detailHz').textContent = `${data.hz} Hz`;
+
+                const fieldsDiv = document.getElementById('detailFields');
+
+                if (!data.fields) {
+                    fieldsDiv.innerHTML = '<div class="empty-state">No data yet</div>';
+                    return;
+                }
+
+                fieldsDiv.innerHTML = Object.entries(data.fields).map(([name, value]) => {
+                    let displayValue = value;
+                    let isArray = false;
+
+                    if (Array.isArray(value)) {
+                        isArray = true;
+                        // Format arrays nicely
+                        if (value.length > 10) {
+                            displayValue = '[' + value.slice(0, 10).map(v =>
+                                typeof v === 'number' ? v.toFixed(4) : v
+                            ).join(', ') + ', ...]';
+                        } else {
+                            displayValue = '[' + value.map(v =>
+                                typeof v === 'number' ? v.toFixed(4) : v
+                            ).join(', ') + ']';
+                        }
+                    } else if (typeof value === 'number') {
+                        displayValue = Number.isInteger(value) ? value : value.toFixed(6);
+                    } else if (value === null) {
+                        displayValue = 'null';
+                    }
+
+                    return `
+                        <div class="field-row">
+                            <span class="field-name">${name}</span>
+                            <span class="field-value ${isArray ? 'array' : ''}">${displayValue}</span>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error('Message detail error:', e);
+            }
+        }
+
+        // Initialize
+        updateStatus();
+        setInterval(updateStatus, 5000);
+    </script>
+</body>
+</html>
