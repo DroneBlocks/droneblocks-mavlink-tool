@@ -71,21 +71,33 @@ def main():
     print("=" * 66)
 
     # ── [1/3] Bootloader via DFU ───────────────────────────────────────────
+    # The DFU write can glitch mid-download (transient USB) and leave the chip
+    # with no working bootloader — and a glitched write also wedges the DFU
+    # descriptors, so recovery is: unplug, re-enter DFU clean, re-flash. We VERIFY
+    # the PX4 bootloader actually enumerates and retry until it does (never march
+    # on with a half-flashed board).
     print("\n[1/3] BOOTLOADER (DFU)")
-    print("  1. Unplug the FC if it's connected.")
-    print("  2. HOLD the BOOT button on the FC, plug in USB, keep holding ~2 s, release.")
-    input("  → Press Enter once the board is plugged in while holding BOOT… ")
-    print("  checking for DFU device (0483:df11)…")
-    if not wait(in_dfu, 25):
-        sys.exit("  ✗ no DFU device. Re-run and hold BOOT *while* plugging in the USB.")
-    print("  ✓ DFU detected — flashing bootloader → 0x08000000")
-    # dfu-util exits non-zero on the benign 'leave' get_status quirk; we verify by re-enumeration.
-    subprocess.run(["dfu-util", "-a", "0", "-d", "0483:df11",
-                    "-s", "0x08000000:leave", "-D", BOOTLOADER])
-    print("  waiting for the PX4 bootloader to come up…")
-    if not wait(lambda: bool(usbmodems()), 20):
-        input("  no serial device yet — unplug ~3 s and replug USB, then press Enter… ")
-    print("  ✓ bootloader installed")
+    print("  Unplug the FC, then HOLD the BOOT button, plug in USB, hold ~2 s, release.")
+    for attempt in range(1, 6):
+        input(f"  → (try {attempt}) Press Enter once it's plugged in while holding BOOT… ")
+        if not wait(in_dfu, 25):
+            print("  ✗ no DFU device — hold BOOT *while* plugging in. Try again.")
+            continue
+        print("  ✓ DFU detected — flashing bootloader → 0x08000000")
+        r = subprocess.run(["dfu-util", "-a", "0", "-d", "0483:df11",
+                            "-s", "0x08000000:leave", "-D", BOOTLOADER],
+                           capture_output=True, text=True)
+        log = r.stdout + r.stderr
+        wrote = "File downloaded successfully" in log
+        # benign: dfu-util exits non-zero on the ':leave' get_status quirk — ignore that.
+        up = wait(lambda: bool(usbmodems()), 20)   # PX4 bootloader CDC must appear
+        if wrote and up:
+            print("  ✓ bootloader installed and running (PX4 bootloader enumerated)")
+            break
+        print("  ✗ write didn't take (no PX4 bootloader came up — transient DFU glitch).")
+        print("    Unplug the FC and re-enter DFU (hold BOOT, replug) — we'll re-flash.")
+    else:
+        sys.exit("  ✗ bootloader flash failed after retries. Recover DFU and re-run.")
 
     # ── [2/3] App firmware via px_uploader ─────────────────────────────────
     print("\n[2/3] APP FIRMWARE (DroneBlocks PX4 branch)")

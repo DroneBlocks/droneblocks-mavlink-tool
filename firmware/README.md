@@ -136,8 +136,13 @@ Good flow over a **textured surface at ~0.3–0.8 m** reads quality ~245/255.
 - **`dfu-util -l` empty** → board isn't in DFU; hold **BOOT** *while* plugging in.
 - **dfu-util ends with `Error during download get_status`** → **benign** STM32-DFU
   quirk on the `:leave` step (device detaches before status read). The write
-  succeeded — `File downloaded successfully` prints just above, and the board
+  succeeded **if** `File downloaded successfully` printed just above and the board
   re-enumerates as the PX4 bootloader (`0x3162:0x004b`, serial 0).
+- **DFU write stalls before 100% / no `File downloaded successfully` / no CDC
+  appears** → a transient USB glitch killed the write (seen once live), and a
+  half-write also wedges DFU (`name=UNKNOWN`, `Cannot set alternate interface:
+  LIBUSB_ERROR_OTHER` on retry). Fix: **unplug, re-enter DFU clean (hold BOOT,
+  replug), re-flash.** `flash_new_fc.py` does this verify-and-retry automatically.
 - **px_uploader stuck at "Waiting for bootloader"** → unplug/replug USB so it
   catches the bootloader window. It cannot flash a running app.
 - **"connected but no data" / SYS 0 / total silence after a reboot** → PX4's USB
