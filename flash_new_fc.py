@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""Interactive end-to-end flash for a fresh DroneBlocks H743-AIO (DEXI-3 FC), over USB.
+
+One command, one physical step (the DFU button). It walks you through:
+  [1] bootloader  → dfu-util  (firmware/droneblocks-h743-aio/*_bootloader.bin)
+  [2] app firmware→ px_uploader (DroneBlocks PX4 branch, *_default.px4)
+  [3] DEXI-3 params→ provision_dexi3_flow.py (indoor optical flow)
+
+Verified live 2026-06-11: after the DFU `:leave`, the board lands in the fresh
+bootloader and px_uploader syncs immediately — no replug — and the app boots
+clean. The only thing you touch is the BOOT button.
+
+Run:  ./venv/bin/python flash_new_fc.py
+"""
+import glob, os, subprocess, sys, time
+from shutil import which
+
+HERE       = os.path.dirname(os.path.abspath(__file__))
+FWDIR      = os.path.join(HERE, "firmware")
+ASSETS     = os.path.join(FWDIR, "droneblocks-h743-aio")
+BOOTLOADER = os.path.join(ASSETS, "droneblocks_h743-aio_bootloader.bin")
+APP        = os.path.join(ASSETS, "droneblocks_h743-aio_default.px4")
+PXUP       = os.path.join(FWDIR, "px_uploader.py")
+PROVISION  = os.path.join(HERE, "provision_dexi3_flow.py")
+PY         = sys.executable
+
+def usbmodems():
+    return glob.glob("/dev/cu.usbmodem*")
+
+def in_dfu():
+    out = subprocess.run(["dfu-util", "-l"], capture_output=True, text=True).stdout
+    return "0483:df11" in out
+
+def wait(cond, timeout, poll=1.0):
+    end = time.time() + timeout
+    while time.time() < end:
+        if cond():
+            return True
+        time.sleep(poll)
+    return False
+
+def wait_app(timeout=60):
+    """Confirm the app booted by getting a PX4 autopilot heartbeat (MAVLink-first)."""
+    from pymavlink import mavutil
+    end = time.time() + timeout
+    while time.time() < end:
+        for d in usbmodems():
+            try:
+                c = mavutil.mavlink_connection(d, baud=57600, source_system=255, source_component=190)
+                c.mav.heartbeat_send(6, 8, 0, 0, 0); t0 = time.time()
+                while time.time() - t0 < 6:
+                    c.mav.heartbeat_send(6, 8, 0, 0, 0)
+                    hb = c.recv_match(type="HEARTBEAT", blocking=True, timeout=0.4)
+                    if hb and (hb.autopilot == 12 or hb.get_srcComponent() == 1):
+                        c.close(); return d
+                c.close()
+            except Exception:
+                pass
+        time.sleep(2)
+    return None
+
+def main():
+    for f in (BOOTLOADER, APP, PXUP, PROVISION):
+        if not os.path.exists(f):
+            sys.exit(f"missing asset: {f}\n(run firmware/fetch-latest.sh, or git pull)")
+    if not which("dfu-util"):
+        sys.exit("dfu-util not found — `brew install dfu-util`")
+
+    print("=" * 66)
+    print(" DroneBlocks H743-AIO — full flash: bootloader + PX4 + DEXI-3 params")
+    print("=" * 66)
+
+    # ── [1/3] Bootloader via DFU ───────────────────────────────────────────
+    print("\n[1/3] BOOTLOADER (DFU)")
+    print("  1. Unplug the FC if it's connected.")
+    print("  2. HOLD the BOOT button on the FC, plug in USB, keep holding ~2 s, release.")
+    input("  → Press Enter once the board is plugged in while holding BOOT… ")
+    print("  checking for DFU device (0483:df11)…")
+    if not wait(in_dfu, 25):
+        sys.exit("  ✗ no DFU device. Re-run and hold BOOT *while* plugging in the USB.")
+    print("  ✓ DFU detected — flashing bootloader → 0x08000000")
+    # dfu-util exits non-zero on the benign 'leave' get_status quirk; we verify by re-enumeration.
+    subprocess.run(["dfu-util", "-a", "0", "-d", "0483:df11",
+                    "-s", "0x08000000:leave", "-D", BOOTLOADER])
+    print("  waiting for the PX4 bootloader to come up…")
+    if not wait(lambda: bool(usbmodems()), 20):
+        input("  no serial device yet — unplug ~3 s and replug USB, then press Enter… ")
+    print("  ✓ bootloader installed")
+
+    # ── [2/3] App firmware via px_uploader ─────────────────────────────────
+    print("\n[2/3] APP FIRMWARE (DroneBlocks PX4 branch)")
+    print("  (if it says 'Waiting for bootloader', unplug/replug USB to catch it)")
+    port = (usbmodems() or ["/dev/cu.usbmodem01"])[0]
+    rc = subprocess.run([PY, "-u", PXUP, "--port", port, APP]).returncode
+    print("  waiting for the app to boot…")
+    dev = wait_app(60)
+    if not dev:
+        input("  app not up — unplug ~5 s and replug USB (power cycle), then press Enter… ")
+        dev = wait_app(60)
+        if not dev:
+            sys.exit("  ✗ app did not boot — check the px_uploader output above.")
+    print(f"  ✓ app running on {dev}")
+
+    # ── [3/3] DEXI-3 params ────────────────────────────────────────────────
+    print("\n[3/3] DEXI-3 INDOOR-FLOW PARAMS")
+    rc = subprocess.run([PY, PROVISION, "--no-reboot"]).returncode
+
+    print("\n" + "=" * 66)
+    print(" ✅ DONE — bootloader + PX4 + params flashed." if rc == 0
+          else " ⚠️  Flash done, but provision reported issues — see above.")
+    print("=" * 66)
+    sys.exit(rc)
+
+if __name__ == "__main__":
+    main()

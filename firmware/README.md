@@ -16,6 +16,24 @@ Three stages:
 
 ---
 
+## Path of least resistance — one command
+
+After a one-time `brew install dfu-util`, just run the orchestrator and follow its
+single prompt (hold BOOT, plug in). It does all three stages back-to-back:
+
+```bash
+cd ~/_dev/droneblocks-mavlink-tool
+./venv/bin/python flash_new_fc.py
+```
+
+The manual stages below are the same thing broken out, for when you need to debug
+a step. **Verified live 2026-06-11:** after the DFU flash the board lands in the
+fresh bootloader and px_uploader syncs **immediately (no replug)**, and the app
+**boots clean (no power-cycle)** — the only thing you physically touch is the
+BOOT button.
+
+---
+
 ## Pinned assets (this folder)
 
 Built by DroneBlocks/PX4-Autopilot's cloud GHA. Pinned here so flashes are
@@ -76,12 +94,13 @@ cd ~/_dev/droneblocks-mavlink-tool/firmware
   droneblocks-h743-aio/droneblocks_h743-aio_default.px4
 ```
 
-- It prints **"Waiting for bootloader… If the board does not respond, unplug and
-  re-plug the USB connector."** → **unplug/replug USB** so it catches the
-  bootloader's startup window. (It will *not* flash a running app.)
-- You'll then see `Found board id: 1240,0` → Erase → Program → Verify → `Rebooting`.
-- After it reboots, do **one clean power-cycle** (unplug ~5 s, replug) so the
-  freshly-flashed app boots cleanly.
+- **Coming straight from Stage 1 it syncs immediately** — `Found board id: 1240,0`
+  → Erase → Program → Verify → `Rebooting`. No replug needed.
+- *Only if* it sits at **"Waiting for bootloader…"** (e.g. the board had been idle
+  a while) → unplug/replug USB to catch the bootloader window. It will not flash a
+  running app.
+- The app normally boots clean. *Only if* it comes up silent (no MAVLink) → one
+  power-cycle (unplug ~5 s, replug).
 
 Port is usually `/dev/cu.usbmodem01` — check with `ls /dev/cu.usbmodem*`.
 
@@ -115,6 +134,10 @@ Good flow over a **textured surface at ~0.3–0.8 m** reads quality ~245/255.
 ## Troubleshooting (hard-won)
 
 - **`dfu-util -l` empty** → board isn't in DFU; hold **BOOT** *while* plugging in.
+- **dfu-util ends with `Error during download get_status`** → **benign** STM32-DFU
+  quirk on the `:leave` step (device detaches before status read). The write
+  succeeded — `File downloaded successfully` prints just above, and the board
+  re-enumerates as the PX4 bootloader (`0x3162:0x004b`, serial 0).
 - **px_uploader stuck at "Waiting for bootloader"** → unplug/replug USB so it
   catches the bootloader window. It cannot flash a running app.
 - **"connected but no data" / SYS 0 / total silence after a reboot** → PX4's USB
