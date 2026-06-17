@@ -54,6 +54,32 @@ PARAMS = [
     ("COM_ARM_WO_GPS", 1,      "int"),      # allow arming without GPS
     # Flight limits
     ("MPC_XY_VEL_MAX", 4.0,    "float"),    # indoor speed cap (m/s)
+    # ── Flight tune (validated on two DEXI-3s, 2026-06-17) ──────────────────
+    # Replaces the 4701 airframe's inherited QAV250 defaults (0.076 / airmode 1),
+    # which flew with arm-jitter + a wallow. Set explicitly here (not relied on
+    # from the airframe) so it lands even on boards still running old firmware,
+    # and survives a "reset to defaults". NOTE: effective gain = K * P — the K
+    # multipliers are part of the tune, do not drop them.
+    ("SENS_BOARD_ROT",  1,     "int"),      # FC mounted Yaw 45 in the DEXI-3 frame
+    ("MC_AIRMODE",      0,     "int"),      # OFF — fixes motor jitter on arm
+    ("MC_ROLLRATE_K",   0.7,   "float"),    # master rate gain (effective P = K*P = 0.105)
+    ("MC_PITCHRATE_K",  0.7,   "float"),
+    ("MC_YAWRATE_K",    1.0,   "float"),
+    ("MC_ROLLRATE_P",   0.15,  "float"),
+    ("MC_PITCHRATE_P",  0.15,  "float"),
+    ("MC_ROLLRATE_I",   0.2,   "float"),
+    ("MC_PITCHRATE_I",  0.2,   "float"),
+    ("MC_ROLLRATE_D",   0.003, "float"),
+    ("MC_PITCHRATE_D",  0.003, "float"),
+    ("MC_ROLLRATE_MAX", 220.0, "float"),
+    ("MC_PITCHRATE_MAX",220.0, "float"),
+    ("MC_YAWRATE_P",    0.2,   "float"),
+    ("MC_YAWRATE_I",    0.1,   "float"),
+    ("MC_YAWRATE_MAX",  200.0, "float"),
+    ("MC_ROLL_P",       6.5,   "float"),
+    ("MC_PITCH_P",      6.5,   "float"),
+    ("MC_YAW_P",        2.8,   "float"),
+    ("MPC_MAN_TILT_MAX",60.0,  "float"),    # beginner tilt limit
 ]
 
 INT32  = mavutil.mavlink.MAV_PARAM_TYPE_INT32
