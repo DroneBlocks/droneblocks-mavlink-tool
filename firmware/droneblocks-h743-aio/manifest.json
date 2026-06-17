@@ -1,9 +1,9 @@
 {
   "board": "droneblocks_h743-aio",
   "board_id": 1240,
-  "version": "v1.17.0-13-g2e6f68d5a8-dirty",
-  "git_sha": "2e6f68d5a8",
-  "built_at": "2026-06-05T22:00:08Z",
+  "version": "v1.17.0-14-g3a1b0207bc-dirty",
+  "git_sha": "3a1b0207bc",
+  "built_at": "2026-06-17T21:00:44Z",
   "firmware": "droneblocks_h743-aio_default.px4",
   "bootloader": "droneblocks_h743-aio_bootloader.bin",
   "firmware_url": "https://pub-a9128812de294697bc4f590727d409c8.r2.dev/droneblocks_h743-aio/latest/droneblocks_h743-aio_default.px4",
