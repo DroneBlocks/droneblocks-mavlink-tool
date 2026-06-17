@@ -24,3 +24,8 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+
+# DEXI flight logs (large ulog binaries) + transient per-drone param snapshots.
+# drone1_baseline.params is the versioned golden reference and IS tracked.
+logs/
+drone2_*.params
