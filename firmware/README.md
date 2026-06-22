@@ -42,11 +42,17 @@ reproducible; pull newer builds with `./fetch-latest.sh`.
 | File | What |
 |---|---|
 | `droneblocks-h743-aio/droneblocks_h743-aio_bootloader.bin` | PX4 bootloader (flash @ `0x08000000`) |
-| `droneblocks-h743-aio/droneblocks_h743-aio_default.px4` | App firmware — **v1.17.0-13-g2e6f68d5a8**, board_id 1240 |
+| `droneblocks-h743-aio/droneblocks_h743-aio_default.px4` | App firmware — **v1.16.2-1-g21c5f9de11**, board_id 1240 |
 | `droneblocks-h743-aio/manifest.json` | version / git_sha / source URLs |
 | `px_uploader.py` | PX4 app flasher (from PX4-Autopilot/Tools) |
 
-Source of truth (latest): `https://pub-a9128812de294697bc4f590727d409c8.r2.dev/droneblocks_h743-aio/latest/manifest.json`
+> **Why v1.16.2, not v1.17.0:** DEXI-3 ships on the PX4 1.16 line so the FC's
+> uXRCE-DDS message versions match the companion `px4_msgs 1.16` the rest of
+> DEXI-OS depends on. A 1.17 FC against the 1.16 companion registers **zero**
+> ROS 2 topics (`Publisher count: 0`). Built from `droneblocks/h743-aio-1.16.2`
+> (the h743 board + 4701 airframe backported onto `v1.16.2`).
+
+Source of truth (latest): `https://pub-a9128812de294697bc4f590727d409c8.r2.dev/droneblocks_h743-aio-1.16.2/latest/manifest.json`
 
 ---
 
