@@ -1,0 +1,15 @@
+{
+  "board": "droneblocks_h743",
+  "board_id": 1241,
+  "version": "v1.16.2-2-g5365e30beb",
+  "git_sha": "5365e30beb",
+  "nuttx_pin": "fb2fadf6f5",
+  "built_at": "2026-06-24T15:49:24Z",
+  "px4_line": "v1.16.2 (companion px4_msgs 1.16 aligned) + NuttX 1.17 pin for CRSF 420000-baud serial fix",
+  "firmware": "droneblocks_h743_default.px4",
+  "bootloader": "droneblocks_h743_bootloader.bin",
+  "source_branch": "droneblocks/h743-aio-1.16.2",
+  "build_note": "Local build (not yet in cloud GHA / R2). No firmware_url until h743 is added to the cloud matrix.",
+  "bootloader_board_type": 1241,
+  "flash_verified": "2026-06-24: DFU bootloader + px_uploader app + MAVLink heartbeat (PX4 v1.16.2, quad) on real H743"
+}
