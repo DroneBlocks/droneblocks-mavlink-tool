@@ -2,6 +2,8 @@
 
 Tools for managing PX4 flight controllers — get/set parameters over the network, access the MAVLink console, and inspect live message traffic.
 
+> **Flashing a fresh DEXI-3 FC** (bootloader + PX4 + params over USB, single board or a 10-drone batch)? See **[FLASHING.md](FLASHING.md)**.
+
 ## Requirements
 
 - Python 3.10+

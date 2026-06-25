@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flashing DEXI-3 Boards from the Command Line — DroneBlocks</title>
+<meta name="description" content="Flash the bootloader, PX4 firmware, and DEXI-3 indoor-flow params onto a DroneBlocks H743-AIO over USB from a Mac — one board or a ten-drone batch — with the DroneBlocks MAVLink Tool CLI.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#fbfaf7; --paper-2:#f4f1ea; --card:#ffffff;
+    --ink:#1f1d1a; --ink-2:#56524b; --ink-3:#8a847a;
+    --line:#e6e1d6; --line-2:#efeae0;
+    --accent:#047caa; --accent-2:#06a7e2; --accent-wash:#eef7fb;
+    --ok:#3f8f5b; --warn:#b07a17;
+    --measure:42rem;
+    --serif:'Newsreader',Georgia,'Times New Roman',serif;
+    --display:'Fraunces',Georgia,serif;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--serif); font-size:19px; line-height:1.62; font-weight:400;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;}
+  .wrap{max-width:var(--measure); margin:0 auto; padding:0 26px}
+  .wide{max-width:46rem}
+  a{color:var(--accent); text-underline-offset:2px; text-decoration-thickness:.5px}
+  a:hover{color:var(--accent-2)}
+
+  /* ---- Masthead ---- */
+  .masthead{border-bottom:1px solid var(--line); background:var(--paper)}
+  .masthead .wrap{display:flex; align-items:center; justify-content:space-between; padding:20px 26px}
+  .masthead svg{height:20px; width:auto; display:block}
+  .masthead .kicker{font-family:var(--mono); font-size:11px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--ink-3)}
+
+  /* ---- Title block ---- */
+  header.title{padding:76px 0 30px}
+  .eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--accent); margin:0 0 22px}
+  h1{font-family:var(--display); font-weight:500; font-size:50px; line-height:1.04;
+    letter-spacing:-.018em; margin:0 0 18px; font-optical-sizing:auto}
+  .standfirst{font-family:var(--serif); font-size:22px; line-height:1.5; color:var(--ink-2);
+    font-weight:400; margin:0; max-width:32rem}
+  .byline{display:flex; flex-wrap:wrap; gap:18px; margin-top:30px; padding-top:18px;
+    border-top:1px solid var(--line-2);
+    font-family:var(--mono); font-size:12px; color:var(--ink-3); letter-spacing:.02em}
+  .byline b{color:var(--ink-2); font-weight:500}
+
+  /* ---- Prose ---- */
+  main{padding:14px 0 40px}
+  section{padding:30px 0}
+  section + section{border-top:1px solid var(--line-2)}
+  p{margin:0 0 18px}
+  .lead-cap::first-letter{font-family:var(--display); font-weight:500; font-size:3.4em;
+    float:left; line-height:.84; padding:6px 10px 0 0; color:var(--ink)}
+  .sec-eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--ink-3); margin:0 0 10px}
+  h2{font-family:var(--display); font-weight:500; font-size:30px; line-height:1.12;
+    letter-spacing:-.012em; margin:0 0 16px}
+  h3{font-family:var(--display); font-weight:500; font-size:21px; margin:30px 0 8px; letter-spacing:-.01em}
+  strong,b{font-weight:600; color:var(--ink)}
+  em{font-style:italic}
+  code{font-family:var(--mono); font-size:.82em; background:var(--paper-2);
+    border:1px solid var(--line); border-radius:5px; padding:.08em .38em; color:#9a3a12}
+  a code{color:inherit}
+
+  /* ---- Steps ---- */
+  .steps{counter-reset:step; margin:6px 0 0}
+  .step{display:grid; grid-template-columns:3rem 1fr; gap:6px 20px; padding:26px 0;
+    border-top:1px solid var(--line-2)}
+  .step:first-child{border-top:0}
+  .step::before{counter-increment:step; content:counter(step);
+    font-family:var(--display); font-weight:400; font-size:34px; line-height:1; color:var(--accent);
+    grid-row:1 / span 2; text-align:right; padding-top:2px}
+  .step h3{grid-column:2; margin:0 0 6px; font-size:22px}
+  .step .body{grid-column:2}
+  .step .body p:last-child{margin-bottom:0}
+
+  /* ---- Terminal transcript (replaces UI figures for a CLI tool) ---- */
+  .term{margin:24px 0; background:#1e1c19; border:1px solid #34302a; border-radius:12px;
+    box-shadow:0 14px 38px -22px rgba(40,33,20,.55); overflow:hidden}
+  .term .bar{display:flex; align-items:center; gap:7px; padding:11px 14px; background:#26231f;
+    border-bottom:1px solid #34302a}
+  .term .bar i{width:11px; height:11px; border-radius:50%; display:block}
+  .term .bar i:nth-child(1){background:#ec6a5e} .term .bar i:nth-child(2){background:#f4bf4f}
+  .term .bar i:nth-child(3){background:#61c454}
+  .term .bar span{margin-left:8px; font-family:var(--mono); font-size:11px; color:#8a847a; letter-spacing:.03em}
+  .term pre{margin:0; padding:16px 18px; overflow-x:auto;
+    font-family:var(--mono); font-size:13px; line-height:1.62; color:#e7e2d8; white-space:pre}
+  .term .pr{color:#6fb1d6}   /* prompt */
+  .term .cm{color:#857f74}   /* comment / dim */
+  .term .ok{color:#7fc98a}   /* green success */
+  .term .ac{color:#5fc1ec}   /* accent / values */
+  .term .wn{color:#e0a94b}   /* warn */
+  .term .hd{color:#fff; font-weight:500}  /* headers */
+  figcaption{font-family:var(--mono); font-size:12px; color:var(--ink-3); margin:11px 2px 0;
+    line-height:1.5}
+  figcaption b{color:var(--ink-2); font-weight:500}
+
+  /* ---- Aside / callout ---- */
+  .aside{border-left:2px solid var(--accent-2); background:var(--accent-wash);
+    border-radius:0 10px 10px 0; padding:16px 20px; margin:24px 0;
+    font-size:17.5px; line-height:1.55; color:var(--ink-2)}
+  .aside .lab{font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--accent); display:block; margin-bottom:7px}
+  .aside p{margin:0 0 10px} .aside p:last-child{margin:0}
+  .aside.warn{border-left-color:var(--warn); background:#fbf5e9}
+  .aside.warn .lab{color:var(--warn)}
+
+  /* lists */
+  ul,ol{margin:0 0 18px; padding-left:1.3em}
+  li{margin:0 0 9px} li::marker{color:var(--ink-3)}
+  ul.tight li{margin:0 0 5px}
+
+  /* ---- Table ---- */
+  .tbl{margin:22px 0; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--card)}
+  table{width:100%; border-collapse:collapse; font-size:16px; font-family:var(--serif)}
+  th,td{text-align:left; padding:13px 16px; border-bottom:1px solid var(--line-2); vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  thead th{font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--ink-3); font-weight:500; background:var(--paper-2)}
+  td:first-child{font-weight:500; color:var(--ink); width:38%}
+
+  /* misc */
+  hr.rule{border:0; border-top:1px solid var(--line); margin:0}
+  .path{font-family:var(--mono); font-size:.85em; color:var(--ink-2)}
+  footer{border-top:1px solid var(--line); padding:30px 0 70px; margin-top:20px}
+  footer .wrap{font-family:var(--mono); font-size:12px; color:var(--ink-3); line-height:1.7}
+
+  @media(max-width:600px){
+    body{font-size:18px}
+    h1{font-size:38px}
+    h2{font-size:25px}
+    .standfirst{font-size:19px}
+    .step{grid-template-columns:1.9rem 1fr; gap:4px 14px}
+    .step::before{font-size:26px}
+    .term pre{font-size:12px}
+    td:first-child{width:auto}
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead"><div class="wrap">
+  <svg viewBox="0 0 963.4 207" role="img" aria-label="DroneBlocks"><style>.st0{fill:#06a7e2}.st1{fill:#003a5d}.st2{fill:#e7e7e8}.st3{fill:#047caa}.st4{fill:#bcbdc0}.st5{fill:#0597ce}</style><path class="st0" d="M234.9 88.4h-5.4V76.9h24.8c8.9 0 15.2 1.2 20.9 6.7 5.3 5 8.1 12.3 8.1 21.5 0 8.6-2.8 15.8-7.9 20.8-5.2 5-11.1 6.8-19.2 6.8h-26.7v-11.5h5.4V88.4zm34.4 16.3c0-10-5.5-15.7-15.5-15.7h-5.3v31.5h5.5c10.4 0 15.3-5 15.3-15.8zm52 16.5v11.5h-22.4v-11.5h5.4V88.4h-5.4V76.9h22.4c6.4 0 11.5.1 15.8 3.1 4.8 3.3 7.7 9.1 7.7 15.5 0 7.7-3.9 14.1-10.4 17.3l6.9 8.5h5.3v11.5h-12.1l-16.4-20v8.5h3.2zm-.7-18.5c6.8 0 10.1-1.9 10.1-6.7 0-5-2.9-6.5-9.5-6.5H318v13.2h2.6zM369.3 84c5.5-5.4 12.4-8.2 20.3-8.2 7.5 0 14.4 2.8 19.9 8.2 5.6 5.6 8.6 12.7 8.6 20.3 0 8-2.8 15.1-8.1 20.6-5.4 5.6-12.7 8.8-20.6 8.8-8.3 0-15.2-3-20.7-8.9-5.3-5.6-7.9-12.5-7.9-20.7 0-7.6 3-14.7 8.5-20.1zm20.2 35.9c8 0 14.6-6.4 14.6-15.5 0-8.2-6.5-14.7-14.4-14.7-8.3 0-14.8 6.5-14.8 14.7 0 8.8 6.9 15.5 14.6 15.5zm68.2 1.3v11.5h-24.2v-11.5h5.4V88.4h-5.4V76.9h17.7l20.6 31V88.4h-5.5V76.9h24.2v11.5h-5v44.3h-12l-20.8-31.1v19.5h5zm81.5-6.5h12.2v18h-40.7v-11.5h5.4V88.4h-5.4V76.9h40.7v17.9h-12.2v-6.4h-9.3v9.9h12.3v12.4h-12.3v10.6h9.3v-6.6z"/><path class="st1" d="M574.5 121.2h5.4V88.4h-5.4V76.9H599c11.4 0 17.3 4.9 17.3 13.7 0 5.8-2.1 9.5-7 11.9 6.4 2 9.6 6.1 9.6 12.9 0 5.3-1.9 9.9-5.4 13.1-4.1 3.7-9.2 4.2-16.6 4.2h-22.4v-11.5zm21.9-22.8c5.1 0 7.5-1.1 7.5-4.4 0-3.8-1.9-5.2-6.4-5.2h-4.4v9.6h3.3zm1.4 22.5c5.3 0 7.6-1.3 7.6-5.6 0-4.6-2.5-5.6-7.9-5.6h-4.3v11.2h4.6zm68 .4v-6.5H678v18h-40.7v-11.5h5.4V88.4h-5.4V76.9h24.2v11.5h-5v32.9h9.3zM702 84c5.5-5.4 12.4-8.2 20.3-8.2 7.5 0 14.4 2.8 19.9 8.2 5.6 5.6 8.6 12.7 8.6 20.3 0 8-2.8 15.1-8.1 20.6-5.4 5.6-12.7 8.8-20.6 8.8-8.3 0-15.2-3-20.7-8.9-5.3-5.6-7.9-12.5-7.9-20.7.1-7.6 3.1-14.7 8.5-20.1zm20.2 35.9c8 0 14.6-6.4 14.6-15.5 0-8.2-6.5-14.7-14.4-14.7-8.3 0-14.8 6.5-14.8 14.7 0 8.8 6.9 15.5 14.6 15.5zm70.5 13.8c-8.2 0-15.2-3-20.7-8.8-5.3-5.6-7.9-12.5-7.9-20.7 0-7.8 3-14.8 8.5-20.2 5.5-5.3 12.5-8.2 20.3-8.2 5.8 0 11 1.6 15.8 4.9v-3.9h10.1v18.4h-14.3c-3-3.8-6.7-5.8-11.4-5.8-8.4 0-15.1 6.5-15.1 15.1 0 8.4 6.9 15.3 14.6 15.3 5.3 0 9.9-2.7 12.9-7.9h14.9c-3.6 14.1-13.7 21.8-27.7 21.8zm72-11.4v10.5h-24.2v-11.5h5.4V88.5h-5.4V77.1h24.2v10.6h-5.2v14.5l14.6-14.5h-5.9V77.1h24.2v11.5h-4.7l-15.6 15.7 17.7 17.1h3.3v11.5h-24.2v-10.5h5.3l-14.6-14.6v14.6h5.1zm58.4 11h-10.8V115H925c.5 5.3 2.2 7.7 5.6 7.7 3.1 0 5.5-2.3 5.5-5.2 0-1.8-.9-3.5-2.4-4.4-2.6-1.6-5.9-2.4-9.3-3.8-8.1-3.5-12.1-8.6-12.1-15.6 0-9.7 7.5-17.1 17.3-17.1 3.3 0 6 .9 8.7 3V78h10.3v15.9H937c-.6-3.8-2.6-5.9-5.4-5.9-2.7 0-4.8 2-4.8 4.5 0 2 .9 3.6 2.4 4.4 3.5 1.8 7.5 2.5 11 4.4 6.8 3.6 10.2 8.6 10.2 15 0 10-8.1 18.3-17.7 18.3-3.3 0-6.4-1-9.5-3.1v1.8z"/><path class="st0" d="M66.6 40.2c1.8-1.8 4.1-2.7 6.4-2.7h2.5c2.1 0 3.2-2.5 1.7-4L59.8 16.2 54 22c2.6 8.7.4 18.6-6.5 25.5S30.8 56.6 22 54l-5.9 5.9 17.3 17.3c1.5 1.5 4 .4 4-1.7V73c0-2.3.9-4.6 2.7-6.4 1.8-1.8 4.1-2.7 6.4-2.7 2.3 0 4.6.9 6.4 2.7 1.8 1.8 2.7 4.1 2.7 6.4 0 2.3-.9 4.6-2.7 6.4-1.8 1.8-4.1 2.7-6.4 2.7H44c-2.1 0-3.2 2.5-1.7 4l17.3 17.3 17.3-17.3c1.5-1.5.4-4-1.7-4h-2.5c-2.3 0-4.6-.9-6.4-2.7-3.5-3.5-3.5-9.3 0-12.8s9.3-3.5 12.8 0c1.8 1.8 2.7 4.1 2.7 6.4v2.5c0 2.1 2.5 3.2 4 1.7l17.3-17.3-16.9-17.4c-1.5-1.5-4-.4-4 1.7v2.5c0 2.3-.9 4.6-2.7 6.4-3.5 3.5-9.3 3.5-12.8 0-3.6-3.6-3.6-9.3-.1-12.9z"/><circle class="st2" cx="29.4" cy="29.4" r="4.6"/><path class="st2" d="M31.9 38.5h-2.5c-2.3 0-4.6-.9-6.4-2.7-1.8-1.8-2.7-4.1-2.7-6.4 0-2.3.9-4.6 2.7-6.4 1.8-1.8 4.1-2.7 6.4-2.7 2.3 0 4.6.9 6.4 2.7 1.8 1.8 2.7 4.1 2.7 6.4v2.5c0 2.1 2.5 3.2 4 1.7L54 22c-1.2-4-3.3-7.7-6.5-10.9-10-10-26.3-10-36.3 0s-10 26.3 0 36.3c3.1 3.1 6.9 5.3 10.9 6.5l11.5-11.5c1.4-1.4.4-3.9-1.7-3.9z"/><path class="st3" d="M54 22c2.6 8.7.4 18.6-6.5 25.5S30.8 56.6 22 54l-2.9 2.9c10.4 3.8 22.5 1.6 30.9-6.8 8.4-8.4 10.6-20.5 6.8-30.9L54 22z"/><path class="st4" d="M11.2 47.5c-10-10-10-26.3 0-36.3s26.3-10 36.3 0c3.1 3.1 5.3 6.9 6.5 10.9l2.9-2.9c-1.4-3.9-3.7-7.5-6.8-10.6C38.6-2.9 20-2.9 8.6 8.6c-11.5 11.5-11.5 30 0 41.5 3.1 3.1 6.7 5.4 10.6 6.8L22 54c-3.9-1.2-7.7-3.4-10.8-6.5z"/><path class="st2" d="M47.5 47.5c6.9-6.9 9.1-16.7 6.5-25.5L42.5 33.5c-1.5 1.5-4 .4-4-1.7v-2.5c0-2.3-.9-4.6-2.7-6.4-1.8-1.8-4.1-2.7-6.4-2.7-2.3 0-4.6.9-6.4 2.7-1.8 1.8-2.7 4.1-2.7 6.4 0 2.3.9 4.6 2.7 6.4 1.8 1.8 4.1 2.7 6.4 2.7h2.5c2.1 0 3.2 2.5 1.7 4L22 54c8.8 2.6 18.6.4 25.5-6.5zM25.7 29.4c0-.9.4-1.9 1.1-2.6.7-.7 1.7-1.1 2.6-1.1.9 0 1.9.4 2.6 1.1.7.7 1.1 1.7 1.1 2.6 0 .9-.4 1.9-1.1 2.6-.7.7-1.7 1.1-2.6 1.1-.9 0-1.9-.4-2.6-1.1-.8-.7-1.1-1.7-1.1-2.6z"/><path class="st5" d="M42.5 33.5c-1.5 1.5-4 .4-4-1.7v-2.5c0-2.3-.9-4.6-2.7-6.4-1.8-1.8-4.1-2.7-6.4-2.7-2.3 0-4.6.9-6.4 2.7-1.8 1.8-2.7 4.1-2.7 6.4 0 2.3.9 4.6 2.7 6.4 1.8 1.8 4.1 2.7 6.4 2.7h2.5c2.1 0 3.2 2.5 1.7 4L22 54c8.7 2.6 18.6.4 25.5-6.5S56.6 30.8 54 22L42.5 33.5zm-9.4-4.1c0 .9-.4 1.9-1.1 2.6-.7.7-1.7 1.1-2.6 1.1-.9 0-1.9-.4-2.6-1.1-.7-.7-1.1-1.7-1.1-2.6 0-.9.4-1.9 1.1-2.6.7-.7 1.7-1.1 2.6-1.1.9 0 1.9.4 2.6 1.1.7.7 1.1 1.6 1.1 2.6z"/><circle class="st2" cx="177.6" cy="177.6" r="4.6"/><path class="st1" d="m129.8 120.9 17.3-17.3-17.3-17.3c-1.5-1.5-4-.4-4 1.7v2.5c0 2.3-.9 4.6-2.7 6.4-3.5 3.5-9.3 3.5-12.8 0s-3.5-9.3 0-12.8c1.8-1.8 4.1-2.7 6.4-2.7h2.5c2.1 0 3.2-2.5 1.7-4l-17.3-17.3-17.4 17.1c-1.5 1.5-4 .4-4-1.7V73c0-2.3-.9-4.6-2.7-6.4-1.8-1.8-4.1-2.7-6.4-2.7-2.3 0-4.6.9-6.4 2.7-1.8 1.8-2.7 4.1-2.7 6.4 0 2.3.9 4.6 2.7 6.4 1.8 1.8 4.1 2.7 6.4 2.7h2.5c2.1 0 3.2 2.5 1.7 4L60 103.4l17.3 17.3c1.5 1.5 4 .4 4-1.7v-2.5c0-2.3.9-4.6 2.7-6.4 1.8-1.8 4.1-2.7 6.4-2.7 2.3 0 4.6.9 6.4 2.7s2.7 4.1 2.7 6.4c0 2.3-.9 4.6-2.7 6.4-1.8 1.8-4.1 2.7-6.4 2.7h-2.5c-2.1 0-3.2 2.5-1.7 4l17.3 17.3 17.3-17.3c1.5-1.5 4-.4 4 1.7v2.5c0 2.3.9 4.6 2.7 6.4 1.8 1.8 4.1 2.7 6.4 2.7 2.3 0 4.6-.9 6.4-2.7 1.8-1.8 2.7-4.1 2.7-6.4 0-2.3-.9-4.6-2.7-6.4s-4.1-2.7-6.4-2.7h-2.5c-2 .2-3.1-2.4-1.6-3.8z"/></svg>
+  <span class="kicker">Field Guide</span>
+</div></div>
+
+<header class="title"><div class="wrap">
+  <p class="eyebrow">Hardware · DEXI‑3 Flight Controller</p>
+  <h1>Flashing DEXI‑3 boards from the command line</h1>
+  <p class="standfirst">Bootloader, PX4 firmware, and indoor‑flow params onto a DroneBlocks H743‑AIO over USB — one board with a single command, or ten back‑to‑back on a bench, with the board telling you when it's done.</p>
+  <div class="byline">
+    <span>For <b>the DroneBlocks team</b></span>
+    <span>Tool <b>MAVLink Tool (CLI)</b></span>
+    <span>Platform <b>macOS</b></span>
+    <span>Read <b>~6 min</b></span>
+  </div>
+</div></header>
+
+<main>
+
+  <section><div class="wrap">
+    <p class="lead-cap">The <a href="https://px4-configurator.web.app">PX4 Configurator</a> flashes a single board beautifully in a browser tab. This is its sibling for the bench: a small Python CLI that runs the <strong>same three stages</strong> — bootloader, firmware, params — but unattended and scriptable, so a production run of ten drones is plug‑in, walk‑away, repeat. One command does the whole job per board and prints a green <strong>PASS</strong> when the params verify. No QGroundControl, no STM32CubeProgrammer, no clicking.</p>
+  </div></section>
+
+  <section><div class="wrap">
+    <p class="sec-eyebrow">Before you start</p>
+    <h2>What you'll need</h2>
+    <ul class="tight">
+      <li><strong>A Mac</strong> with the <code>droneblocks-mavlink-tool</code> repo cloned. The pinned firmware lives in the repo — nothing extra to download.</li>
+      <li><strong>Python deps + <code>dfu-util</code></strong> — the deps come from <code>requirements.txt</code>; <code>dfu-util</code> is a native tool from Homebrew (<em>not</em> a pip package — the one piece people forget).</li>
+      <li><strong>A USB‑C <em>data</em> cable</strong> — not charge‑only. No battery required; USB powers the board (and the UP‑T201 flow sensor) for flashing.</li>
+    </ul>
+    <div class="aside">
+      <span class="lab">The one thing to understand</span>
+      <p>Flashing is <strong>three stages</strong>, and one command runs all three: the <strong>bootloader</strong> via <code>dfu-util</code> (STM32 DFU), the <strong>PX4 firmware</strong> via <code>px_uploader.py</code>, then the <strong>DEXI‑3 params</strong> via <code>provision_dexi3_flow.py</code>.</p>
+      <p><strong>Which stages does a board need?</strong> A bare/foreign board needs all three (start in DFU). A board that <em>already</em> runs DroneBlocks PX4 needs only firmware + params — and the tool re‑flashes it <strong>without the BOOT button</strong>, because <code>px_uploader</code> reboots a running app into its own bootloader. The batch tool detects which case each board is and does the right thing automatically.</p>
+    </div>
+  </div></section>
+
+  <section><div class="wrap">
+    <p class="sec-eyebrow">Setup · once per machine</p>
+    <h2>Clone and install</h2>
+    <div class="steps">
+      <div class="step">
+        <h3>Clone the repo</h3>
+        <div class="body"><p>The firmware binaries are committed, so the clone is flash‑ready.</p></div>
+      </div>
+      <div class="step">
+        <h3>Install the Python deps</h3>
+        <div class="body"><p>Use <code>uv</code> or plain <code>venv</code> + <code>pip</code> — either creates the environment the tools run from.</p></div>
+      </div>
+      <div class="step">
+        <h3>Install <code>dfu-util</code></h3>
+        <div class="body"><p>One‑time, via Homebrew. Needed only for the bootloader stage, but install it now so a bare board doesn't stop you later.</p></div>
+      </div>
+    </div>
+    <figure>
+      <div class="term">
+        <div class="bar"><i></i><i></i><i></i><span>zsh — setup</span></div>
+<pre><span class="pr">$</span> git clone https://github.com/DroneBlocks/droneblocks-mavlink-tool.git
+<span class="pr">$</span> cd droneblocks-mavlink-tool
+
+<span class="cm"># Python deps — pick one:</span>
+<span class="pr">$</span> uv venv <span class="ac">&amp;&amp;</span> uv pip install -r requirements.txt          <span class="cm"># uv</span>
+<span class="pr">$</span> python3 -m venv venv <span class="ac">&amp;&amp;</span> ./venv/bin/pip install -r requirements.txt   <span class="cm"># …or pip</span>
+
+<span class="cm"># dfu-util — one-time, for the bootloader stage:</span>
+<span class="pr">$</span> brew install dfu-util</pre>
+      </div>
+      <figcaption><b>Setup.</b> Everything below assumes the repo venv — <span class="path">./venv/bin/python</span> (or just <span class="path">python</span> with the env active).</figcaption>
+    </figure>
+  </div></section>
+
+  <section><div class="wrap">
+    <p class="sec-eyebrow">Step · plug it in</p>
+    <h2>Connect the board</h2>
+    <div class="steps">
+      <div class="step">
+        <h3>Bare or foreign board → DFU</h3>
+        <div class="body"><p>Unplug. <strong>Hold the BOOT button</strong>, plug in USB‑C, keep holding ~2&nbsp;seconds, release. Confirm with <code>dfu-util -l</code> — you want <span class="path">0483:df11</span>, <span class="path">@Internal Flash</span>.</p></div>
+      </div>
+      <div class="step">
+        <h3>Already runs DroneBlocks PX4 → just plug in</h3>
+        <div class="body"><p>No BOOT button. The board boots its app and enumerates as <span class="path">/dev/cu.usbmodem*</span>; the tool reboots it into its own bootloader to re‑flash.</p></div>
+      </div>
+    </div>
+  </div></section>
+
+  <section><div class="wrap">
+    <p class="sec-eyebrow">Path A · one board</p>
+    <h2>Flash a single board</h2>
+    <p>With the board in DFU, run the orchestrator. It walks the three stages, verifies the bootloader actually enumerated (and retries a glitchy DFU write on its own), and finishes on the params check.</p>
+    <figure>
+      <div class="term">
+        <div class="bar"><i></i><i></i><i></i><span>zsh — flash_new_fc.py</span></div>
+<pre><span class="pr">$</span> ./venv/bin/python flash_new_fc.py
+<span class="hd">==================================================================</span>
+<span class="hd"> DroneBlocks H743-AIO — full flash: bootloader + PX4 + DEXI-3 params</span>
+<span class="hd">==================================================================</span>
+
+<span class="ac">[1/3]</span> BOOTLOADER (DFU)
+  <span class="ok">✓</span> DFU detected — flashing bootloader → 0x08000000
+  <span class="ok">✓</span> bootloader installed and running (PX4 bootloader enumerated)
+
+<span class="ac">[2/3]</span> APP FIRMWARE (DroneBlocks PX4 branch)
+  Found board id: <span class="ac">1240,0</span>   Erase → Program → Verify [====] 100%
+  <span class="ok">✓</span> app running on /dev/cu.usbmodem01
+
+<span class="ac">[3/3]</span> DEXI-3 INDOOR-FLOW PARAMS
+  SENS_BOARD_ROT  = 1        (want 1)   OK
+  EKF2_HGT_REF    = 2        (want 2)   OK
+  MC_AIRMODE      = 0        (want 0)   OK
+  <span class="cm">… 37 params …</span>
+  <span class="ok">█ PROVISION PASS — all params stored correctly █</span></pre>
+      </div>
+      <figcaption><b>One command, one physical step.</b> The only thing you touch is the BOOT button; after the DFU <code>:leave</code> the board lands in the fresh bootloader and the app flashes with no replug.</figcaption>
+    </figure>
+    <div class="aside warn">
+      <span class="lab">The benign error you'll see</span>
+      <p><code>dfu-util: Error during download get_status</code> on the <code>:leave</code> step is a <strong>normal STM32‑DFU quirk</strong> (the chip detaches before the status read). The write <em>succeeded</em> as long as <strong><code>File downloaded successfully</code></strong> printed just above it.</p>
+    </div>
+  </div></section>
+
+  <section><div class="wrap">
+    <p class="sec-eyebrow">Path B · production run</p>
+    <h2>Flash a batch — ten drones, hands off</h2>
+    <p>For a build run, <code>flash_batch.py</code> loops with <strong>zero keypresses per board</strong>: it waits for a board, detects its state, flashes it, prints a <strong>✅ DONE</strong> line, then waits for you to unplug and insert the next. The firmware version is printed up front and on every PASS line, so the run is self‑documenting.</p>
+    <figure>
+      <div class="term">
+        <div class="bar"><i></i><i></i><i></i><span>zsh — flash_batch.py --count 10</span></div>
+<pre><span class="pr">$</span> ./venv/bin/python flash_batch.py --count 10
+<span class="hd">======================================================================</span>
+<span class="hd"> DroneBlocks H743-AIO — BATCH flash</span>
+   board   : droneblocks_h743-aio (board_id <span class="ac">1240</span>)
+   firmware: <span class="ac">v1.16.2-1-g21c5f9de11</span>  built 2026-06-22
+   mode    : flash firmware + params
+   target  : 10 boards
+<span class="hd">======================================================================</span>
+ Bare board → hold BOOT + plug (DFU).  Already-flashed → just plug in.
+
+<span class="ac">┌─ DRONE 1 ─────────────────────────────────────────────</span>
+│  ✓ detected: DFU (bare) → full flash  (hands off until done)
+  [bootloader] <span class="ok">✓</span>   [app] <span class="ok">✓</span> /dev/cu.usbmodem01   [params] <span class="ok">✓</span> PASS
+<span class="ac">└─</span> <span class="ok">✅ DRONE 1 DONE</span> (v1.16.2-1-g21c5f9de11).  Unplug; plug in the next.
+
+<span class="cm">          … drones 2–9 …</span>
+
+<span class="ac">┌─ DRONE 10 ────────────────────────────────────────────</span>
+│  ✓ detected: running app → re-flash + params
+  [app] <span class="ok">✓</span> /dev/cu.usbmodem01   [params] <span class="ok">✓</span> PASS
+<span class="ac">└─</span> <span class="ok">✅ DRONE 10 DONE</span>.  Unplug; plug in the next.
+
+<span class="hd">======================================================================</span>
+ BATCH COMPLETE — <span class="ok">10 OK</span>, 0 failed, 10 boards handled.
+<span class="hd">======================================================================</span></pre>
+      </div>
+      <figcaption><b>Auto-detect per board.</b> Drop <code>--count</code> to run until Ctrl‑C. A board that glitches mid‑flash prints a FAILED line and retries as the next board in the queue.</figcaption>
+    </figure>
+    <h3>What it does with each board</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>You plug in…</th><th>Detected</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>Bare board <strong>in DFU</strong> (held BOOT)</td><td><code>dfu</code></td><td>bootloader + app + params</td></tr>
+        <tr><td>Already-flashed, <strong>plugged normally</strong></td><td><code>app</code></td><td>re-flash same app + params</td></tr>
+        <tr><td>Bootloader-only (interrupted board)</td><td><code>usb</code></td><td>app + params</td></tr>
+      </tbody>
+    </table></div>
+    <p>The default re‑flashes the firmware on every board so the whole fleet ends up <strong>byte‑identical</strong>. Add <code>--params-only</code> to skip the firmware on already‑flashed boards (faster, but it trusts the existing version — fine for a re‑provision, risky for a mixed‑age batch).</p>
+  </div></section>
+
+  <section><div class="wrap">
+    <p class="sec-eyebrow">After the flash</p>
+    <h2>Calibrate, then verify</h2>
+    <p>The flash and params are identical across boards — but <strong>sensor calibration is per‑board</strong> and can't be cloned. Before a board flies, in the <a href="https://px4-configurator.web.app">PX4 Configurator</a> <span class="path">/calibrate</span> page:</p>
+    <ul class="tight">
+      <li><strong>Gyro</strong>, <strong>Level horizon</strong>, and <strong>6‑position accel</strong>.</li>
+      <li><strong>Skip the magnetometer</strong> — DEXI‑3 runs <code>EKF2_MAG_TYPE=5</code> (mag off, no onboard compass).</li>
+    </ul>
+    <p>You can audit any unit later without re‑flashing:</p>
+    <figure>
+      <div class="term">
+        <div class="bar"><i></i><i></i><i></i><span>zsh — verify</span></div>
+<pre><span class="pr">$</span> ./venv/bin/python provision_dexi3_flow.py --verify-only   <span class="cm"># all params OK?</span>
+<span class="pr">$</span> ./venv/bin/python watch_flow.py /dev/cu.usbmodem01        <span class="cm"># live optical flow</span>
+<span class="cm">#  good flow over texture at ~0.3–0.8 m reads quality ~245/255</span></pre>
+      </div>
+      <figcaption><b>On the bench, no battery.</b> The “no OPTICAL_FLOW_RAD” note during provisioning is expected when no flow sensor is attached — it doesn't fail the flash.</figcaption>
+    </figure>
+    <div class="aside">
+      <span class="lab">What version am I flashing?</span>
+      <p><span class="path">firmware/droneblocks-h743-aio/manifest.json</span> is the source of truth — currently <strong>board_id 1240</strong>, firmware <strong>v1.16.2-1-g21c5f9de11</strong>. <strong>Why 1.16.2 and not 1.17:</strong> DEXI‑3 ships on the PX4 1.16 line so the FC's uXRCE‑DDS message versions match the companion <code>px4_msgs 1.16</code> the rest of DEXI‑OS uses. A 1.17 FC against a 1.16 companion registers <strong>zero</strong> ROS 2 topics. Pull newer cloud builds with <code>./firmware/fetch-latest.sh</code>.</p>
+    </div>
+  </div></section>
+
+  <section><div class="wrap">
+    <p class="sec-eyebrow">When it misbehaves</p>
+    <h2>Quick troubleshooting</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Symptom</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td><code>dfu-util -l</code> shows nothing</td><td>Board isn't in DFU — hold <strong>BOOT</strong> <em>while</em> plugging in, then release.</td></tr>
+        <tr><td><code>Error during download get_status</code></td><td>Benign if <code>File downloaded successfully</code> printed above it — the write took.</td></tr>
+        <tr><td>px_uploader stuck at “Waiting for bootloader”</td><td>Unplug/replug USB to catch the bootloader window; it won't flash a running app blindly.</td></tr>
+        <tr><td>No <span class="path">/dev/cu.usbmodem*</span> after flashing</td><td>One USB power‑cycle (unplug ~5 s, replug); the MAVLink‑first tools grab the port correctly.</td></tr>
+        <tr><td>Connected but no sensors / dead board</td><td>Re‑seat the cable — a charge‑only cable mimics a dead board.</td></tr>
+        <tr><td>Don't use the web flasher mid‑run</td><td>Its “port already open” bug can leave a board in the bootloader with no app; these CLI tools avoid it.</td></tr>
+      </tbody>
+    </table></div>
+    <p>The full hard‑won list lives in the repo at <span class="path">firmware/README.md</span>; the quickstart is <span class="path">FLASHING.md</span>.</p>
+  </div></section>
+
+</main>
+
+<footer><div class="wrap">
+  DroneBlocks · MAVLink Tool field guide<br>
+  Build · Fly · Code. Questions → the hardware channel.
+</div></footer>
+
+</body>
+</html>
