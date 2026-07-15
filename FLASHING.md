@@ -5,7 +5,9 @@ to a fully-provisioned DEXI-3 — bootloader + PX4 firmware + indoor-flow params
 over USB from your Mac. No QGroundControl, no web configurator.
 
 > **Internal tool.** Built and used by [DroneBlocks](https://droneblocks.io) for
-> production flashing runs. macOS-tested (uses `/dev/cu.usbmodem*`).
+> production flashing runs. Runs on **macOS, Windows, and Linux** — the FC's USB
+> serial port is auto-detected on each (see [Running on Windows](#running-on-windows-pc)
+> for the extra one-time Windows setup).
 
 ## What it does
 
@@ -50,7 +52,63 @@ brew install dfu-util
 ```
 
 > All commands below assume the repo venv: `./venv/bin/python` (or just `python`
-> with the venv/uv env activated).
+> with the venv/uv env activated). **On Windows** the venv Python is
+> `venv\Scripts\python` — see [Running on Windows](#running-on-windows-pc) first.
+
+---
+
+## Running on Windows (PC)
+
+The flasher runs on Windows, but needs three one-time setup steps macOS doesn't.
+The FC's COM port is auto-detected (by USB vendor ID, so it ignores Bluetooth and
+other COM ports) — you never pass a port number.
+
+**1. Python venv (note the `Scripts` path):**
+
+```powershell
+py -m venv venv
+venv\Scripts\pip install -r requirements.txt
+```
+
+Then run every command below as `venv\Scripts\python flash_batch.py …` (instead
+of `./venv/bin/python …`).
+
+**2. `dfu-util` (needed for the bootloader stage on bare boards):**
+
+```powershell
+winget install dfu-util      # …or: choco install dfu-util
+```
+
+Confirm it's on `PATH`: `dfu-util -l` should run. If "not recognized", add its
+install dir to PATH (or reopen the terminal).
+
+**3. Zadig — WinUSB driver for the DFU device (the #1 Windows gotcha).**
+On Windows a bare board in DFU (`hold BOOT + plug`) enumerates as `STM32
+BOOTLOADER` (USB `0483:df11`), but `dfu-util` can't talk to it until the
+**WinUSB** (or libusbK) driver is bound to it:
+
+1. Download **[Zadig](https://zadig.akeo.ie/)**.
+2. Put a board in DFU (hold BOOT while plugging in USB).
+3. In Zadig: **Options → List All Devices**, select **STM32 BOOTLOADER**
+   (`0483 DF11`), choose **WinUSB**, click **Replace/Install Driver**. One-time
+   per PC. `dfu-util -l` should now list `0483:df11`.
+
+> Already-flashed DroneBlocks boards (plugged in **normally**, no BOOT) don't use
+> DFU — they re-flash through their PX4 bootloader over the COM port, so Zadig
+> isn't needed for a `--params-only` or re-flash run. Zadig is only for bringing
+> up a **bare/foreign** board.
+
+**Flash — same commands, Windows Python:**
+
+```powershell
+venv\Scripts\python flash_new_fc.py                 # one board
+venv\Scripts\python flash_batch.py --count 10       # a batch
+venv\Scripts\python flash_batch.py --params-only    # already-flashed → params only
+```
+
+> **Tip:** during a batch run, unplug other USB-serial gadgets (Arduinos, adapters).
+> The FC is matched by vendor ID first, but a dedicated flashing session is cleanest.
+> Sanity-check what Windows sees: `venv\Scripts\python -c "import serial_ports; print(serial_ports.fc_ports())"`.
 
 ## 3. Plug in the board
 
@@ -115,7 +173,8 @@ Audit a unit any time without re-flashing:
 tool prints it on startup and on every PASS line. Currently:
 
 - **Board:** `droneblocks_h743-aio`, board_id **1240**
-- **Firmware:** **`v1.16.2-1-g21c5f9de11`**
+- **Firmware:** **`v1.16.2-3-g39e04ffe23`** (the manifest is authoritative; the tool
+  prints the live version at runtime, so trust that over this line)
 
 > **Why 1.16.2 and not 1.17:** DEXI-3 ships on the PX4 1.16 line so the FC's
 > uXRCE-DDS message versions match the companion `px4_msgs 1.16` the rest of
