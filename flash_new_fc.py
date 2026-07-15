@@ -12,8 +12,9 @@ clean. The only thing you touch is the BOOT button.
 
 Run:  ./venv/bin/python flash_new_fc.py
 """
-import glob, os, subprocess, sys, time
+import os, subprocess, sys, time
 from shutil import which
+from serial_ports import fc_ports, pxup_port_arg
 
 HERE       = os.path.dirname(os.path.abspath(__file__))
 FWDIR      = os.path.join(HERE, "firmware")
@@ -25,7 +26,7 @@ PROVISION  = os.path.join(HERE, "provision_dexi3_flow.py")
 PY         = sys.executable
 
 def usbmodems():
-    return glob.glob("/dev/cu.usbmodem*")
+    return fc_ports()   # cross-platform (macOS usbmodem / Windows COM / Linux ttyACM)
 
 def in_dfu():
     out = subprocess.run(["dfu-util", "-l"], capture_output=True, text=True).stdout
@@ -64,7 +65,8 @@ def main():
         if not os.path.exists(f):
             sys.exit(f"missing asset: {f}\n(run firmware/fetch-latest.sh, or git pull)")
     if not which("dfu-util"):
-        sys.exit("dfu-util not found — `brew install dfu-util`")
+        hint = "winget install dfu-util" if sys.platform.startswith("win") else "brew install dfu-util"
+        sys.exit(f"dfu-util not found — install it ({hint}) and ensure it's on PATH")
 
     print("=" * 66)
     print(" DroneBlocks H743-AIO — full flash: bootloader + PX4 + DEXI-3 params")
@@ -102,8 +104,7 @@ def main():
     # ── [2/3] App firmware via px_uploader ─────────────────────────────────
     print("\n[2/3] APP FIRMWARE (DroneBlocks PX4 branch)")
     print("  (if it says 'Waiting for bootloader', unplug/replug USB to catch it)")
-    port = (usbmodems() or ["/dev/cu.usbmodem01"])[0]
-    rc = subprocess.run([PY, "-u", PXUP, "--port", port, APP]).returncode
+    rc = subprocess.run([PY, "-u", PXUP, "--port", pxup_port_arg(), APP]).returncode
     print("  waiting for the app to boot…")
     dev = wait_app(60)
     if not dev:

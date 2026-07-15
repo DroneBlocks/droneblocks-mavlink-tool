@@ -21,8 +21,9 @@ Run:  ./venv/bin/python flash_batch.py                 # flash until Ctrl-C
 The firmware version (from firmware/droneblocks-h743-aio/manifest.json) is printed up
 front and on every PASS line, so the run is self-documenting.
 """
-import argparse, glob, json, os, subprocess, sys, time
+import argparse, json, os, subprocess, sys, time
 from shutil import which
+from serial_ports import fc_ports, pxup_port_arg
 
 HERE       = os.path.dirname(os.path.abspath(__file__))
 FWDIR      = os.path.join(HERE, "firmware")
@@ -33,11 +34,10 @@ MANIFEST   = os.path.join(ASSETS, "manifest.json")
 PXUP       = os.path.join(FWDIR, "px_uploader.py")
 PROVISION  = os.path.join(HERE, "provision_dexi3_flow.py")
 PY         = sys.executable
-USBGLOB    = "/dev/cu.usbmodem*"   # px_uploader + provision both glob this; survives re-enumeration
 
 
 def usbmodems():
-    return glob.glob(USBGLOB)
+    return fc_ports()   # cross-platform (macOS usbmodem / Windows COM / Linux ttyACM)
 
 
 def in_dfu():
@@ -110,7 +110,7 @@ def stage_app():
     """Flash the app. px_uploader auto-reboots a running app into its bootloader,
     so this works whether the board is sitting in the bootloader OR running an app."""
     print("  [app] flashing firmware (px_uploader auto-reboots if app is running)…")
-    rc = subprocess.run([PY, "-u", PXUP, "--port", USBGLOB, APP],
+    rc = subprocess.run([PY, "-u", PXUP, "--port", pxup_port_arg(), APP],
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
     dev = app_heartbeat(60)
     if not dev:
@@ -159,7 +159,8 @@ def main():
         if not os.path.exists(f):
             sys.exit(f"missing asset: {f}\n(run firmware/fetch-latest.sh, or git pull)")
     if not which("dfu-util"):
-        sys.exit("dfu-util not found — `brew install dfu-util`")
+        hint = "winget install dfu-util" if sys.platform.startswith("win") else "brew install dfu-util"
+        sys.exit(f"dfu-util not found — install it ({hint}) and ensure it's on PATH")
 
     m = json.load(open(MANIFEST))
     print("=" * 72)

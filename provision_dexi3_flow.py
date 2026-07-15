@@ -26,9 +26,10 @@ Usage:
   ./venv/bin/python provision_dexi3_flow.py --no-reboot     # skip final reboot+persistence check
   ./venv/bin/python provision_dexi3_flow.py --device /dev/cu.usbmodem01
 """
-import argparse, glob, re, struct, sys, time
+import argparse, re, struct, sys, time
 import serial
 from pymavlink import mavutil
+from serial_ports import fc_ports
 
 # ── DEXI-3 (H743-AIO) airframe ──────────────────────────────────────────────
 AIRFRAME_ID = 4701                          # DroneBlocks H743-AIO / UP-T201
@@ -96,7 +97,7 @@ def _bitcast_int_to_float(i):   # the bytes PX4 expects in param_value for an IN
 def _connect_mavlink(device, timeout):
     end = time.time() + timeout
     while time.time() < end:
-        for d in ([device] if device else glob.glob("/dev/cu.usbmodem*")):
+        for d in ([device] if device else fc_ports()):
             if not d:
                 continue
             try:
@@ -117,7 +118,7 @@ def _connect_mavlink(device, timeout):
 def _raw_reboot(device):
     """FC USB stuck in nsh mode? Reboot it over the raw text console so the next
     open can win MAVLink mode on the fresh boot."""
-    for d in ([device] if device else glob.glob("/dev/cu.usbmodem*")):
+    for d in ([device] if device else fc_ports()):
         if not d:
             continue
         try:
@@ -260,17 +261,17 @@ def _verify(m):
 def watch():
     print("WATCH MODE — plug in a DEXI-3 FC to provision it; unplug when done; Ctrl-C to stop.\n")
     while True:
-        while not glob.glob("/dev/cu.usbmodem*"):
+        while not fc_ports():
             time.sleep(1)
         provision()
         print("\n…unplug this FC, then plug in the next one.")
-        while glob.glob("/dev/cu.usbmodem*"):
+        while fc_ports():
             time.sleep(1)
         print("(FC removed)\n")
 
 def main():
     ap = argparse.ArgumentParser(description="Provision DEXI-3 for indoor optical flow over USB.")
-    ap.add_argument("--device", help="serial device (default: auto-detect /dev/cu.usbmodem*)")
+    ap.add_argument("--device", help="serial device (default: auto-detect USB serial: cu.usbmodem/COMx/ttyACM)")
     ap.add_argument("--watch", action="store_true", help="mass-update loop")
     ap.add_argument("--no-reboot", action="store_true", help="skip final reboot+persistence check")
     ap.add_argument("--verify-only", action="store_true", help="read+check only, write nothing")
