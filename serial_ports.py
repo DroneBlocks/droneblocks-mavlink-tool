@@ -37,6 +37,17 @@ def fc_ports():
     return known if known else sorted(p.device for p in real)
 
 
+def use_utf8_console():
+    """Force UTF-8 stdout/stderr. Windows cmd defaults to cp1252, which raises
+    UnicodeEncodeError on the box-drawing/emoji chars these scripts print
+    (─ ✓ ✗ ✅ ⚠️). No-op where the stream is already UTF-8 or not reconfigurable."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
+
 def pxup_port_arg():
     """The --port value to hand px_uploader.
 
