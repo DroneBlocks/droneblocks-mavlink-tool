@@ -59,6 +59,23 @@ brew install dfu-util
 
 ## Running on Windows (PC)
 
+### Quick setup (recommended) — one command
+
+On a fresh PC (needs `git` + Python's `py` launcher installed), paste this into
+**PowerShell**:
+
+```powershell
+irm https://raw.githubusercontent.com/DroneBlocks/droneblocks-mavlink-tool/main/windows/setup-windows.ps1 | iex
+```
+
+That clones the repo, builds the venv, installs `dfu-util` (no package manager
+needed), downloads Zadig, and copies the launchers + Zadig readme to your
+Desktop. Then do the one-time **Zadig** step ([`docs/zadig-windows-setup.md`](docs/zadig-windows-setup.md),
+also on the Desktop) and double-click **`Flash-DEXI-debug.cmd`**. The manual
+steps below are the same thing, by hand.
+
+---
+
 The flasher runs on Windows, but needs three one-time setup steps macOS doesn't.
 The FC's COM port is auto-detected (by USB vendor ID, so it ignores Bluetooth and
 other COM ports) — you never pass a port number.
