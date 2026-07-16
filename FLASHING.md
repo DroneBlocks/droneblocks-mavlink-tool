@@ -83,6 +83,7 @@ Confirm it's on `PATH`: `dfu-util -l` should run. If "not recognized", add its
 install dir to PATH (or reopen the terminal).
 
 **3. Zadig — WinUSB driver for the DFU device (the #1 Windows gotcha).**
+(Full step-by-step, hand-off friendly: [`docs/zadig-windows-setup.md`](docs/zadig-windows-setup.md).)
 On Windows a bare board in DFU (`hold BOOT + plug`) enumerates as `STM32
 BOOTLOADER` (USB `0483:df11`), but `dfu-util` can't talk to it until the
 **WinUSB** (or libusbK) driver is bound to it:

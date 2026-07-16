@@ -1,0 +1,70 @@
+DEXI-3 FLASHER  --  ONE-TIME WINDOWS SETUP (Zadig)
+===================================================
+
+Do this ONCE on this PC. After that, the team just double-clicks the
+Flash-DEXI launchers and never needs Zadig again.
+
+WHAT IT DOES:
+  Lets the flasher talk to a blank/bare flight controller while it's in
+  "DFU" mode. Without it, flashing a brand-new board fails.
+  (Boards that are already flashed do NOT need this -- only blank ones.)
+
+YOU NEED:
+  Any DEXI-3 flight controller + a USB cable. (zadig.exe is already on
+  this Desktop.)
+
+---------------------------------------------------
+STEP 1 -- Put the board into DFU mode
+---------------------------------------------------
+  1. Unplug the flight controller from USB.
+  2. Press and HOLD the small BOOT button on the board.
+  3. While STILL HOLDING BOOT, plug the USB cable into the PC.
+  4. Keep holding ~2 seconds, then release.
+     (The board is now in DFU mode -- powered but quiet.)
+
+---------------------------------------------------
+STEP 2 -- Run Zadig
+---------------------------------------------------
+  5. On the Desktop, RIGHT-CLICK "zadig.exe"  ->  "Run as administrator".
+     Click Yes if Windows asks for permission.
+
+---------------------------------------------------
+STEP 3 -- Point it at the board
+---------------------------------------------------
+  6. Top menu:  Options  ->  click "List All Devices" (gets a checkmark).
+  7. In the big dropdown near the top, select:
+
+            STM32 BOOTLOADER          (USB ID:  0483  DF11)
+
+     If it's NOT listed, the board isn't in DFU -- redo STEP 1.
+
+---------------------------------------------------
+STEP 4 -- Install the driver
+---------------------------------------------------
+  8. Just RIGHT of the green arrow, the target driver should read:
+
+            WinUSB
+
+     (use the little up/down arrows to pick WinUSB if it shows something
+     else).
+  9. Click the big button:  "Install Driver"  (or "Replace Driver").
+ 10. Wait ~30 sec for:  "The driver was installed successfully."
+
+  DONE.  One time, per PC -- you're finished.
+
+---------------------------------------------------
+CHECK IT WORKED (optional)
+---------------------------------------------------
+  With the board still in DFU, double-click "Flash-DEXI-debug.cmd".
+  It should flash bootloader + firmware + params and finish with a
+  green DONE line.
+
+TROUBLE?
+  - "STM32 BOOTLOADER" not in the list
+        -> board isn't in DFU. Redo STEP 1: hold BOOT *while* you plug
+           in the USB cable.
+  - Install button is greyed out / nothing happens
+        -> you didn't launch Zadig as administrator. Close it and
+           right-click -> Run as administrator.
+  - Still stuck
+        -> text Dennis; he can watch the PC remotely and help.
