@@ -28,34 +28,23 @@ NOTE on portability to another drone:
 import sys, time, glob, struct, argparse
 from pymavlink import mavutil
 
+import dexi_params  # tune comes from dexi-fc-params (params/dexi-3.json)
+
 # name -> (value, is_int)
 # NOTE: PX4 effective rate gain = MC_xxxRATE_K * MC_xxxRATE_P. The K multipliers
 # are part of drone #1's validated tune (K=0.7 roll/pitch = a 30% master-gain cut;
 # default is 1.0) and MUST be set, or a target drone with a different K flies at the
 # wrong effective gain. Drone #1 effective roll P = 0.7*0.15 = 0.105.
-TUNE = {
-    "MC_AIRMODE":       (0,     True),   # OFF — the arm-jitter fix
-    "MC_ROLLRATE_K":    (0.7,   False),  # master multiplier — do not omit
-    "MC_PITCHRATE_K":   (0.7,   False),
-    "MC_YAWRATE_K":     (1.0,   False),
-    "MC_ROLLRATE_P":    (0.15,  False),
-    "MC_PITCHRATE_P":   (0.15,  False),
-    "MC_ROLLRATE_I":    (0.20,  False),
-    "MC_PITCHRATE_I":   (0.20,  False),
-    "MC_ROLLRATE_D":    (0.003, False),
-    "MC_PITCHRATE_D":   (0.003, False),
-    "MC_ROLLRATE_MAX":  (220.0, False),
-    "MC_PITCHRATE_MAX": (220.0, False),
-    "MC_YAWRATE_P":     (0.20,  False),
-    "MC_YAWRATE_I":     (0.10,  False),
-    "MC_YAWRATE_D":     (0.0,   False),
-    "MC_YAWRATE_MAX":   (200.0, False),  # PX4 firmware default
-    "MC_ROLL_P":        (6.5,   False),
-    "MC_PITCH_P":       (6.5,   False),
-    "MC_YAW_P":         (2.8,   False),
-    "MPC_MAN_TILT_MAX": (60.0,  False),
-    "SENS_BOARD_ROT":   (1,     True),   # Yaw 45 — VERIFY per physical mount!
-}
+# The validated DEXI-3 tune. NOT defined here — source of truth is
+# DroneBlocks/dexi-fc-params -> src/dexi-3.json, block "tune", vendored at
+# params/dexi-3.json (refresh: ./fetch-params.sh). The web configurator and the
+# .params downloads compose the same block, so all three stay identical.
+#
+# NOTE: effective rate gain = K * P (roll = 0.7 * 0.15 = 0.105). The K lines ARE
+# part of the tune — a set that drops them transfers the wrong effective gain.
+#
+# name -> (value, is_int)
+TUNE = {n: (v, k == "int") for n, v, k in dexi_params.load_blocks(["tune"])}
 
 def i2f(i):  # int bit-pattern -> float field
     return struct.unpack('<f', struct.pack('<i', int(i)))[0]

@@ -1,0 +1,637 @@
+{
+  "$comment": "SOURCE OF TRUTH for DEXI flight-controller parameters. Everything else is generated from this file: the .params downloads (tools/gen-params.mjs), the px4-web-configurator UI, and droneblocks-mavlink-tool provisioning. Edit here, regenerate, never edit a .params by hand.",
+  "schemaVersion": 1,
+  "vehicle": "dexi-3",
+  "name": "DEXI-3",
+  "airframeId": 4701,
+  "boardId": 1240,
+  "board": "droneblocks-h743-aio",
+  "categoryLabels": {
+    "navigation": "Navigation",
+    "limits": "Flight limits",
+    "safety": "Safety / failsafe",
+    "peripherals": "Peripherals",
+    "comms": "Comms / links",
+    "tune": "Flight tune",
+    "rc": "RC / pilot controls"
+  },
+  "boardDefaults": {
+    "$comment": "Params true of every DEXI-3 with this board \u2014 written as the baseline before a profile is applied.",
+    "blocks": [
+      "base-comms",
+      "rc",
+      "tune"
+    ]
+  },
+  "blocks": {
+    "base-comms": {
+      "category": "comms",
+      "doc": "Flow-sensor MAVLink link + CRSF RC pad. True of BOTH kits \u2014 this is what makes flow position-hold and manual RC flight work, and nothing more.",
+      "params": [
+        {
+          "name": "MAV_2_CONFIG",
+          "value": 103,
+          "kind": "int",
+          "note": "MAVLink instance on TELEM3 \u2014 receives UP-T201 optical flow"
+        },
+        {
+          "name": "SER_TEL3_BAUD",
+          "value": 115200,
+          "kind": "int",
+          "note": "UP-T201 optical-flow baud (TELEM3)"
+        },
+        {
+          "name": "RC_CRSF_PRT_CFG",
+          "value": 0,
+          "kind": "int",
+          "note": "CRSF auto-detected on the RC pad \u2014 standalone CRSF driver must stay off"
+        }
+      ]
+    },
+    "companion-comms": {
+      "category": "comms",
+      "doc": "Developer Kit only: the Pi companion links \u2014 ROS 2 over uXRCE-DDS and MAVLink-over-WiFi via mavlink-router. A Flight Kit has no companion to talk to.",
+      "params": [
+        {
+          "name": "MAV_0_CONFIG",
+          "value": 101,
+          "kind": "int",
+          "note": "mavlink-router on TELEM1 \u2192 MAVLink-over-WiFi (QGC / desktop over the Pi)"
+        },
+        {
+          "name": "SER_TEL1_BAUD",
+          "value": 500000,
+          "kind": "int",
+          "note": "mavlink-router baud (TELEM1)"
+        },
+        {
+          "name": "UXRCE_DDS_CFG",
+          "value": 102,
+          "kind": "int",
+          "note": "uXRCE-DDS on TELEM2 \u2192 ROS2"
+        },
+        {
+          "name": "SER_TEL2_BAUD",
+          "value": 921600,
+          "kind": "int",
+          "note": "uXRCE-DDS baud (TELEM2)"
+        }
+      ]
+    },
+    "rc": {
+      "category": "rc",
+      "doc": "Pilot controls. Same transmitter layout on every DEXI-3: CH5 arm, CH6 Stabilized/Altitude/Position, CH8 kill. Mode slots are 1/4/6 because that is where a 3-position switch lands (PX4 RCUpdateTest.cpp).",
+      "params": [
+        {
+          "name": "RC_INPUT_PROTO",
+          "value": 6,
+          "kind": "int",
+          "note": "CRSF \u2014 pinned so the driver never auto-latches a wrong protocol"
+        },
+        {
+          "name": "RC_MAP_ARM_SW",
+          "value": 5,
+          "kind": "int",
+          "note": "CH5 \u2014 arm / disarm"
+        },
+        {
+          "name": "COM_ARM_SWISBTN",
+          "value": 0,
+          "kind": "int",
+          "note": "CH5 is a 2-position switch, not a momentary button"
+        },
+        {
+          "name": "RC_MAP_FLTMODE",
+          "value": 6,
+          "kind": "int",
+          "note": "CH6 \u2014 flight mode (single-channel, 6 slots)"
+        },
+        {
+          "name": "RC_MAP_KILL_SW",
+          "value": 8,
+          "kind": "int",
+          "note": "CH8 \u2014 kill switch (cuts motors)"
+        },
+        {
+          "name": "COM_FLTMODE1",
+          "value": 8,
+          "kind": "int",
+          "note": "CH6 down \u2014 Stabilized"
+        },
+        {
+          "name": "COM_FLTMODE4",
+          "value": 1,
+          "kind": "int",
+          "note": "CH6 centre \u2014 Altitude"
+        },
+        {
+          "name": "COM_FLTMODE6",
+          "value": 2,
+          "kind": "int",
+          "note": "CH6 up \u2014 Position"
+        },
+        {
+          "name": "COM_FLTMODE2",
+          "value": -1,
+          "kind": "int",
+          "note": "unused slot"
+        },
+        {
+          "name": "COM_FLTMODE3",
+          "value": -1,
+          "kind": "int",
+          "note": "unused slot"
+        },
+        {
+          "name": "COM_FLTMODE5",
+          "value": -1,
+          "kind": "int",
+          "note": "unused slot"
+        }
+      ]
+    },
+    "tune": {
+      "category": "tune",
+      "doc": "Validated DEXI-3 flight tune (two units, 2026-06-17). Effective rate gain = K * P, so the K lines ARE part of the tune \u2014 dropping them transfers the wrong gain.",
+      "params": [
+        {
+          "name": "SENS_BOARD_ROT",
+          "value": 1,
+          "kind": "int",
+          "note": "FC mounted Yaw 45 in the DEXI-3 frame"
+        },
+        {
+          "name": "MC_AIRMODE",
+          "value": 0,
+          "kind": "int",
+          "note": "OFF \u2014 fixes motor jitter on arm"
+        },
+        {
+          "name": "MC_ROLLRATE_K",
+          "value": 0.7,
+          "kind": "float",
+          "note": "master rate gain (effective P = K*P = 0.105)"
+        },
+        {
+          "name": "MC_PITCHRATE_K",
+          "value": 0.7,
+          "kind": "float"
+        },
+        {
+          "name": "MC_YAWRATE_K",
+          "value": 1,
+          "kind": "float"
+        },
+        {
+          "name": "MC_ROLLRATE_P",
+          "value": 0.15,
+          "kind": "float"
+        },
+        {
+          "name": "MC_PITCHRATE_P",
+          "value": 0.15,
+          "kind": "float"
+        },
+        {
+          "name": "MC_ROLLRATE_I",
+          "value": 0.2,
+          "kind": "float"
+        },
+        {
+          "name": "MC_PITCHRATE_I",
+          "value": 0.2,
+          "kind": "float"
+        },
+        {
+          "name": "MC_ROLLRATE_D",
+          "value": 0.003,
+          "kind": "float"
+        },
+        {
+          "name": "MC_PITCHRATE_D",
+          "value": 0.003,
+          "kind": "float"
+        },
+        {
+          "name": "MC_ROLLRATE_MAX",
+          "value": 220,
+          "kind": "float"
+        },
+        {
+          "name": "MC_PITCHRATE_MAX",
+          "value": 220,
+          "kind": "float"
+        },
+        {
+          "name": "MC_YAWRATE_P",
+          "value": 0.2,
+          "kind": "float"
+        },
+        {
+          "name": "MC_YAWRATE_I",
+          "value": 0.1,
+          "kind": "float"
+        },
+        {
+          "name": "MC_YAWRATE_D",
+          "value": 0.0,
+          "kind": "float",
+          "note": "PX4 default \u2014 asserted so a stale autotuned D-term is cleared"
+        },
+        {
+          "name": "MC_YAWRATE_MAX",
+          "value": 200,
+          "kind": "float"
+        },
+        {
+          "name": "MC_ROLL_P",
+          "value": 6.5,
+          "kind": "float"
+        },
+        {
+          "name": "MC_PITCH_P",
+          "value": 6.5,
+          "kind": "float"
+        },
+        {
+          "name": "MC_YAW_P",
+          "value": 2.8,
+          "kind": "float"
+        },
+        {
+          "name": "MPC_MAN_TILT_MAX",
+          "value": 60,
+          "kind": "float",
+          "note": "beginner tilt limit"
+        }
+      ]
+    },
+    "indoor-flow-nav": {
+      "category": "navigation",
+      "doc": "GPS-denied indoor navigation: optical flow + laser range, mag off (gyro yaw), baro smoothing on.",
+      "params": [
+        {
+          "name": "EKF2_EV_CTRL",
+          "value": 0,
+          "kind": "int"
+        },
+        {
+          "name": "EKF2_OF_CTRL",
+          "value": 1,
+          "kind": "int"
+        },
+        {
+          "name": "EKF2_HGT_REF",
+          "value": 2,
+          "kind": "int"
+        },
+        {
+          "name": "EKF2_RNG_CTRL",
+          "value": 2,
+          "kind": "int"
+        },
+        {
+          "name": "EKF2_BARO_CTRL",
+          "value": 1,
+          "kind": "int"
+        },
+        {
+          "name": "EKF2_GPS_CTRL",
+          "value": 0,
+          "kind": "int"
+        },
+        {
+          "name": "EKF2_MAG_TYPE",
+          "value": 5,
+          "kind": "int"
+        },
+        {
+          "name": "COM_ARM_WO_GPS",
+          "value": 1,
+          "kind": "int"
+        }
+      ]
+    },
+    "indoor-limits": {
+      "category": "limits",
+      "doc": "Indoor / classroom speed cap. Starter default, not hardware-validated \u2014 review before relying on it in the field.",
+      "params": [
+        {
+          "name": "MPC_XY_VEL_MAX",
+          "value": 4,
+          "kind": "float"
+        }
+      ]
+    },
+    "apriltag-nav": {
+      "category": "navigation",
+      "doc": "External-vision pose (AprilTag / VIO) fused over flow + range. REQUIRES a companion publishing VISION_POSITION_ESTIMATE.",
+      "params": [
+        {
+          "name": "EKF2_EV_CTRL",
+          "value": 15,
+          "kind": "int"
+        },
+        {
+          "name": "EKF2_EVP_NOISE",
+          "value": 0.1,
+          "kind": "float"
+        },
+        {
+          "name": "EKF2_EVV_NOISE",
+          "value": 0.1,
+          "kind": "float"
+        },
+        {
+          "name": "EKF2_EVA_NOISE",
+          "value": 0.1,
+          "kind": "float"
+        }
+      ]
+    },
+    "outdoor-gps-nav": {
+      "category": "navigation",
+      "doc": "GPS + external compass outdoors. PROPOSED \u2014 needs a GPS+compass module fitted; not flight-validated.",
+      "params": [
+        {
+          "name": "EKF2_GPS_CTRL",
+          "value": 7,
+          "kind": "int"
+        },
+        {
+          "name": "EKF2_HGT_REF",
+          "value": 1,
+          "kind": "int"
+        },
+        {
+          "name": "EKF2_MAG_TYPE",
+          "value": 0,
+          "kind": "int"
+        },
+        {
+          "name": "EKF2_EV_CTRL",
+          "value": 0,
+          "kind": "int"
+        },
+        {
+          "name": "EKF2_OF_CTRL",
+          "value": 0,
+          "kind": "int"
+        },
+        {
+          "name": "COM_ARM_WO_GPS",
+          "value": 0,
+          "kind": "int"
+        }
+      ]
+    },
+    "acro-rates": {
+      "category": "limits",
+      "doc": "ACRO max rates for flips/rolls. PX4 defaults (300/300/100) feel sluggish.",
+      "params": [
+        {
+          "name": "MC_ACRO_R_MAX",
+          "value": 720,
+          "kind": "float"
+        },
+        {
+          "name": "MC_ACRO_P_MAX",
+          "value": 720,
+          "kind": "float"
+        },
+        {
+          "name": "MC_ACRO_Y_MAX",
+          "value": 400,
+          "kind": "float"
+        }
+      ]
+    }
+  },
+  "profiles": [
+    {
+      "key": "indoor-flow",
+      "name": "DEXI Indoor (Flow Only)",
+      "description": "GPS-denied indoor flight from optical flow + laser range. No external pose source needed \u2014 flies anywhere with floor texture. This is the shipping default.",
+      "isDefault": true,
+      "details": [
+        "Horizontal: optical flow (EKF2_OF_CTRL = 1), external vision OFF (EKF2_EV_CTRL = 0)",
+        "Height: laser range as reference (EKF2_HGT_REF = 2, EKF2_RNG_CTRL = 2) + baro smoothing (EKF2_BARO_CTRL = 1)",
+        "Heading: gyro-only (EKF2_MAG_TYPE = 5) \u2014 the onboard mag glitches indoors",
+        "Arms without GPS (EKF2_GPS_CTRL = 0, COM_ARM_WO_GPS = 1)",
+        "Indoor speed cap (MPC_XY_VEL_MAX = 4 m/s)"
+      ],
+      "airframeIds": [
+        4601,
+        4701
+      ],
+      "blocks": [
+        "indoor-flow-nav",
+        "indoor-limits"
+      ],
+      "identity": [
+        {
+          "name": "EKF2_EV_CTRL",
+          "value": 0,
+          "kind": "int"
+        },
+        {
+          "name": "EKF2_MAG_TYPE",
+          "value": 5,
+          "kind": "int"
+        }
+      ]
+    },
+    {
+      "key": "indoor-apriltag",
+      "name": "DEXI Indoor (AprilTags)",
+      "description": "Adds an external-vision pose source (AprilTag or VIO) for drift-free horizontal position and yaw. Requires a companion node publishing VISION_POSITION_ESTIMATE to PX4.",
+      "details": [
+        "Navigation: fuse external vision pos + vel + yaw (EKF2_EV_CTRL = 15) over flow + range",
+        "REQUIRES an EV odometry source actively publishing (apriltag / VIO companion)",
+        "EV noise: EKF2_EVP/EVV/EVA_NOISE = 0.1; tune EKF2_EV_DELAY to your pipeline latency",
+        "Indoor speed cap (MPC_XY_VEL_MAX = 4 m/s)"
+      ],
+      "airframeIds": [
+        4601,
+        4701
+      ],
+      "blocks": [
+        "apriltag-nav",
+        "indoor-limits"
+      ],
+      "identity": [
+        {
+          "name": "EKF2_EV_CTRL",
+          "value": 15,
+          "kind": "int"
+        }
+      ]
+    },
+    {
+      "key": "indoor-uwb",
+      "name": "DEXI Indoor (UWB)",
+      "description": "Ultra-wideband positioning (Bitcraze Loco / DW3000, TDoA) for drift-free absolute position without cameras or floor texture. Planned \u2014 params land here once the UWB\u2192PX4 bridge is validated.",
+      "comingSoon": true,
+      "details": [
+        "Navigation: anchor-based UWB ranging fed to PX4 (likely via the EV pipeline, or as a fake-GPS local position)",
+        "Final param set TBD pending bench validation of the TDoA solver on the companion",
+        "Architecture note: when ready this is just sections[] here \u2014 no code changes"
+      ],
+      "airframeIds": [
+        4601,
+        4701
+      ],
+      "blocks": []
+    },
+    {
+      "key": "outdoor-gps",
+      "name": "DEXI Outdoor (GPS)",
+      "description": "GPS + external-compass outdoor flight. Requires a GPS+compass module on the airframe. Proposed param set \u2014 documented here, not yet flight-validated (kept disabled until then).",
+      "comingSoon": true,
+      "details": [
+        "Horizontal + height: GPS (EKF2_GPS_CTRL = 7), require GPS to arm (COM_ARM_WO_GPS = 0)",
+        "Height reference: GPS (EKF2_HGT_REF = 1)",
+        "Heading: magnetometer back ON (EKF2_MAG_TYPE = 0) \u2014 the external mag on the GPS mast is clean outdoors",
+        "Indoor sensors off: optical flow (EKF2_OF_CTRL = 0), external vision (EKF2_EV_CTRL = 0)",
+        "Needs the GPS+compass hardware \u2014 applying this without it will leave the EKF without its aiding source"
+      ],
+      "blocks": [
+        "outdoor-gps-nav"
+      ],
+      "identity": [
+        {
+          "name": "EKF2_GPS_CTRL",
+          "value": 7,
+          "kind": "int"
+        },
+        {
+          "name": "EKF2_MAG_TYPE",
+          "value": 0,
+          "kind": "int"
+        }
+      ]
+    },
+    {
+      "key": "flight-kit",
+      "name": "DEXI-3 Flight Kit \u2014 Complete Setup",
+      "description": "The one file to send a Flight Kit (Build / Fly). Everything a flow position-hold drone flown by radio needs: flow-sensor link + RC + validated flight tune + indoor flow navigation. No companion computer.",
+      "selfContained": true,
+      "writesBoardDefaults": false,
+      "reboots": true,
+      "details": [
+        "Comms: optical-flow MAVLink link on TELEM3 + CRSF RC pad",
+        "RC: CH5 arm/disarm, CH6 Stabilized/Altitude/Position, CH8 kill",
+        "Tune: the validated DEXI-3 rate/attitude gains (airmode off, board Yaw-45)",
+        "Navigation: indoor flow position hold (EKF2_EV_CTRL = 0, flow + range)",
+        "Load this one file in QGC and the drone is ready to fly \u2014 no second file"
+      ],
+      "airframeIds": [
+        4701
+      ],
+      "blocks": [
+        "base-comms",
+        "rc",
+        "tune",
+        "indoor-flow-nav",
+        "indoor-limits"
+      ],
+      "identity": [
+        {
+          "name": "EKF2_EV_CTRL",
+          "value": 0,
+          "kind": "int"
+        },
+        {
+          "name": "EKF2_MAG_TYPE",
+          "value": 5,
+          "kind": "int"
+        }
+      ]
+    },
+    {
+      "key": "developer-kit",
+      "name": "DEXI-3 Developer Kit \u2014 Complete Setup",
+      "description": "The one file to send a Developer Kit (Build / Fly / Code). Everything in the Flight Kit PLUS the Pi companion links \u2014 ROS2 over uXRCE-DDS and MAVLink-over-WiFi via mavlink-router.",
+      "selfContained": true,
+      "writesBoardDefaults": false,
+      "reboots": true,
+      "details": [
+        "Comms: flow + RC baseline PLUS companion links (uXRCE-DDS on TELEM2, mavlink-router on TELEM1)",
+        "RC: CH5 arm/disarm, CH6 Stabilized/Altitude/Position, CH8 kill",
+        "Tune: the validated DEXI-3 rate/attitude gains",
+        "Navigation: indoor flow position hold",
+        "Requires the Pi companion running the DEXI-OS image for the ROS2 / WiFi links",
+        "One file \u2014 no separate comms file needed"
+      ],
+      "airframeIds": [
+        4701
+      ],
+      "blocks": [
+        "base-comms",
+        "companion-comms",
+        "rc",
+        "tune",
+        "indoor-flow-nav",
+        "indoor-limits"
+      ],
+      "identity": [
+        {
+          "name": "UXRCE_DDS_CFG",
+          "value": 102,
+          "kind": "int"
+        }
+      ]
+    },
+    {
+      "key": "developer-comms-addon",
+      "name": "DEXI-3 Developer Comms (add-on)",
+      "description": "Add-on: just the Pi companion links (ROS2 + MAVLink-over-WiFi). Use this to upgrade a drone that already has the Flight Kit setup \u2014 leaves tune and navigation untouched.",
+      "writesBoardDefaults": false,
+      "reboots": true,
+      "details": [
+        "ROS2: uXRCE-DDS on TELEM2 (UXRCE_DDS_CFG = 102, SER_TEL2_BAUD = 921600)",
+        "MAVLink-over-WiFi: mavlink-router on TELEM1 (MAV_0_CONFIG = 101, SER_TEL1_BAUD = 500000)",
+        "Does NOT touch flight tune or navigation \u2014 pure companion-link overlay"
+      ],
+      "airframeIds": [
+        4701
+      ],
+      "blocks": [
+        "companion-comms"
+      ],
+      "identity": [
+        {
+          "name": "UXRCE_DDS_CFG",
+          "value": 102,
+          "kind": "int"
+        }
+      ]
+    },
+    {
+      "key": "acro-rates",
+      "name": "DEXI-3 ACRO rates",
+      "description": "ADDITIVE \u2014 writes ONLY the ACRO max rates for snappy flips/rolls. Touches nothing else: no comms/EKF/airframe params, no board defaults, no reboot. Layers on top of whatever profile you already run.",
+      "additive": true,
+      "details": [
+        "Roll/pitch max rate 720\u00b0/s, yaw 400\u00b0/s (the PX4 300/300/100 defaults feel sluggish)",
+        "Writes only MC_ACRO_R_MAX / MC_ACRO_P_MAX / MC_ACRO_Y_MAX, then force-saves",
+        "Airmode is separate \u2014 if flips still stall at low throttle, check MC_AIRMODE = 1"
+      ],
+      "blocks": [
+        "acro-rates"
+      ],
+      "identity": [
+        {
+          "name": "MC_ACRO_R_MAX",
+          "value": 720,
+          "kind": "float"
+        },
+        {
+          "name": "MC_ACRO_P_MAX",
+          "value": 720,
+          "kind": "float"
+        }
+      ]
+    }
+  ]
+}
