@@ -29,7 +29,9 @@ Usage:
 import argparse, re, struct, sys, time
 import serial
 from pymavlink import mavutil
-from serial_ports import fc_ports
+from serial_ports import fc_ports, use_utf8_console
+
+use_utf8_console()
 
 # ── DEXI-3 (H743-AIO) airframe ──────────────────────────────────────────────
 AIRFRAME_ID = 4701                          # DroneBlocks H743-AIO / UP-T201

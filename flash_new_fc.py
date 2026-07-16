@@ -14,7 +14,9 @@ Run:  ./venv/bin/python flash_new_fc.py
 """
 import os, subprocess, sys, time
 from shutil import which
-from serial_ports import fc_ports, pxup_port_arg
+from serial_ports import fc_ports, pxup_port_arg, use_utf8_console
+
+use_utf8_console()
 
 HERE       = os.path.dirname(os.path.abspath(__file__))
 FWDIR      = os.path.join(HERE, "firmware")
