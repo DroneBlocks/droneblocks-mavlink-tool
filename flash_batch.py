@@ -17,6 +17,7 @@ have a DroneBlocks bootloader don't need it at all.
 Run:  ./venv/bin/python flash_batch.py                 # flash until Ctrl-C
       ./venv/bin/python flash_batch.py --count 10      # stop after 10 boards
       ./venv/bin/python flash_batch.py --params-only   # already-flashed → just params
+      ./venv/bin/python flash_batch.py --count 1 --verbose  # one board, full tool output (debug)
 
 The firmware version (from firmware/droneblocks-h743-aio/manifest.json) is printed up
 front and on every PASS line, so the run is self-documenting.
@@ -36,6 +37,12 @@ MANIFEST   = os.path.join(ASSETS, "manifest.json")
 PXUP       = os.path.join(FWDIR, "px_uploader.py")
 PROVISION  = os.path.join(HERE, "provision_dexi3_flow.py")
 PY         = sys.executable
+VERBOSE    = False   # --verbose: stream child tool (dfu-util/px_uploader/provision) output
+
+
+def _sink():
+    """subprocess stdout/stderr kwargs: hidden normally, inherited (visible) with --verbose."""
+    return {} if VERBOSE else {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
 
 
 def usbmodems():
@@ -98,6 +105,9 @@ def stage_bootloader_dfu():
                             "-s", "0x08000000:leave", "-D", BOOTLOADER],
                            capture_output=True, text=True)
         wrote = "File downloaded successfully" in (r.stdout + r.stderr)
+        if VERBOSE:
+            for line in (r.stdout + r.stderr).splitlines():
+                print(f"      | {line}")
         up = wait(lambda: bool(usbmodems()), 20)   # PX4 bootloader CDC must appear
         if wrote and up:
             print("    ✓ bootloader installed (PX4 bootloader enumerated)")
@@ -112,8 +122,7 @@ def stage_app():
     """Flash the app. px_uploader auto-reboots a running app into its bootloader,
     so this works whether the board is sitting in the bootloader OR running an app."""
     print("  [app] flashing firmware (px_uploader auto-reboots if app is running)…")
-    rc = subprocess.run([PY, "-u", PXUP, "--port", pxup_port_arg(), APP],
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
+    rc = subprocess.run([PY, "-u", PXUP, "--port", pxup_port_arg(), APP], **_sink()).returncode
     dev = app_heartbeat(60)
     if not dev:
         print("    ✗ app did not boot — unplug/replug this board and restart it.")
@@ -124,8 +133,7 @@ def stage_app():
 
 def stage_params():
     print("  [params] provisioning DEXI-3 profile…")
-    rc = subprocess.run([PY, PROVISION, "--no-reboot"],
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
+    rc = subprocess.run([PY, PROVISION, "--no-reboot"], **_sink()).returncode
     if rc != 0:
         print("    ✗ provision reported issues — run provision_dexi3_flow.py --verify-only to inspect.")
         return False
@@ -155,7 +163,11 @@ def main():
     ap.add_argument("--count", type=int, default=0, help="stop after N boards (0 = until Ctrl-C)")
     ap.add_argument("--params-only", action="store_true",
                     help="for already-flashed boards: skip the app flash, only (re)write params")
+    ap.add_argument("--verbose", action="store_true",
+                    help="stream dfu-util/px_uploader/provision output (for debugging a failed flash)")
     args = ap.parse_args()
+    global VERBOSE
+    VERBOSE = args.verbose
 
     for f in (BOOTLOADER, APP, PXUP, PROVISION):
         if not os.path.exists(f):
