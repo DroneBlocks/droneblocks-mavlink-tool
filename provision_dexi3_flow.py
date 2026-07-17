@@ -31,59 +31,27 @@ import serial
 from pymavlink import mavutil
 from serial_ports import fc_ports, use_utf8_console
 
+import dexi_params  # params come from dexi-fc-params (params/dexi-3.json)
+
 use_utf8_console()
 
 # ── DEXI-3 (H743-AIO) airframe ──────────────────────────────────────────────
 AIRFRAME_ID = 4701                          # DroneBlocks H743-AIO / UP-T201
 
 # ── The full provisioning set (name, value, kind) ───────────────────────────
-PARAMS = [
-    # Comms / board wiring  (lib/boards.ts droneblocks-h743-aio hardwareDefaults)
-    ("MAV_0_CONFIG",   101,    "int"),      # mavlink-router on TELEM1
-    ("MAV_2_CONFIG",   103,    "int"),      # mavlink instance on TELEM3 (UP-T201 line)
-    ("SER_TEL1_BAUD",  500000, "int"),      # mavlink-router baud
-    ("SER_TEL2_BAUD",  921600, "int"),      # uXRCE-DDS baud
-    ("SER_TEL3_BAUD",  115200, "int"),      # UP-T201 optical flow baud
-    ("UXRCE_DDS_CFG",  102,    "int"),      # uXRCE-DDS on TELEM2
-    ("RC_CRSF_PRT_CFG",0,      "int"),      # CRSF auto-detected on RC pad — keep standalone driver off
-    # Navigation: indoor optical flow  (lib/profiles.ts indoor-flow)
-    ("EKF2_EV_CTRL",   0,      "int"),      # external vision off
-    ("EKF2_OF_CTRL",   1,      "int"),      # optical flow on
-    ("EKF2_HGT_REF",   2,      "int"),      # range = height reference
-    ("EKF2_RNG_CTRL",  2,      "int"),      # range always fused
-    ("EKF2_BARO_CTRL", 1,      "int"),      # baro smooths vertical (no bob)
-    ("EKF2_GPS_CTRL",  0,      "int"),      # GPS off
-    ("EKF2_MAG_TYPE",  5,      "int"),      # gyro yaw (mag off — glitches indoors)
-    ("COM_ARM_WO_GPS", 1,      "int"),      # allow arming without GPS
-    # Flight limits
-    ("MPC_XY_VEL_MAX", 4.0,    "float"),    # indoor speed cap (m/s)
-    # ── Flight tune (validated on two DEXI-3s, 2026-06-17) ──────────────────
-    # Replaces the 4701 airframe's inherited QAV250 defaults (0.076 / airmode 1),
-    # which flew with arm-jitter + a wallow. Set explicitly here (not relied on
-    # from the airframe) so it lands even on boards still running old firmware,
-    # and survives a "reset to defaults". NOTE: effective gain = K * P — the K
-    # multipliers are part of the tune, do not drop them.
-    ("SENS_BOARD_ROT",  1,     "int"),      # FC mounted Yaw 45 in the DEXI-3 frame
-    ("MC_AIRMODE",      0,     "int"),      # OFF — fixes motor jitter on arm
-    ("MC_ROLLRATE_K",   0.7,   "float"),    # master rate gain (effective P = K*P = 0.105)
-    ("MC_PITCHRATE_K",  0.7,   "float"),
-    ("MC_YAWRATE_K",    1.0,   "float"),
-    ("MC_ROLLRATE_P",   0.15,  "float"),
-    ("MC_PITCHRATE_P",  0.15,  "float"),
-    ("MC_ROLLRATE_I",   0.2,   "float"),
-    ("MC_PITCHRATE_I",  0.2,   "float"),
-    ("MC_ROLLRATE_D",   0.003, "float"),
-    ("MC_PITCHRATE_D",  0.003, "float"),
-    ("MC_ROLLRATE_MAX", 220.0, "float"),
-    ("MC_PITCHRATE_MAX",220.0, "float"),
-    ("MC_YAWRATE_P",    0.2,   "float"),
-    ("MC_YAWRATE_I",    0.1,   "float"),
-    ("MC_YAWRATE_MAX",  200.0, "float"),
-    ("MC_ROLL_P",       6.5,   "float"),
-    ("MC_PITCH_P",      6.5,   "float"),
-    ("MC_YAW_P",        2.8,   "float"),
-    ("MPC_MAN_TILT_MAX",60.0,  "float"),    # beginner tilt limit
-]
+#
+# NOT defined here any more. The source of truth is DroneBlocks/dexi-fc-params
+# -> src/dexi-3.json, vendored at params/dexi-3.json (refresh: ./fetch-params.sh).
+#
+# This list used to be hand-maintained alongside copies in the web configurator
+# and dexi-fc-params, and it drifted: it carried 36 params while the configurator
+# wrote 47, so it never set the RC switch map (CH5 arm / CH6 modes / CH8 kill).
+# A batch-flashed drone and a browser-provisioned one were different aircraft.
+#
+# "developer-kit" = base comms + companion links (mavlink-router + uXRCE-DDS) +
+# RC map + flight tune + indoor flow nav + indoor limits. That is what this
+# script has always written; the RC map is what it was missing.
+PARAMS = dexi_params.load_profile("developer-kit")
 
 INT32  = mavutil.mavlink.MAV_PARAM_TYPE_INT32
 REAL32 = mavutil.mavlink.MAV_PARAM_TYPE_REAL32
