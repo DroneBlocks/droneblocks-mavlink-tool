@@ -1,0 +1,23 @@
+{
+  "board": "ark_pi6x",
+  "board_id": 58,
+  "version": "v1.15.0-4-gdd5e81470c",
+  "git_sha": "dd5e81470c",
+  "nuttx_pin": "5d74bc1389",
+  "built_at": "2026-08-11T21:20:48Z",
+  "firmware": "ark_pi6x_default.px4",
+  "sha256": "cb3a66cd8481a146f64eb61267022c04736d02767d36b5a42ba4257133ab4bcb",
+  "image_size": 1686364,
+  "image_maxsize": 1835008,
+  "bootloader": null,
+  "source_branch": "ark/pi6x-ist8310-1.15",
+  "patch": "ist8310.patch",
+  "px4_line": "Stock upstream PX4 at the exact commit the DEXI-5 v1 ARK Pi6X was already running (v1.15.0-4-gdd5e81470c, release/1.15, NuttX 5d74bc1389), plus ONE added Kconfig line. Built at that commit deliberately so the uXRCE-DDS message set stays identical to the companion px4_msgs the Pi expects.",
+  "modification": "CONFIG_DRIVERS_MAGNETOMETER_ISENTEK_IST8310=y added to boards/ark/pi6x/default.px4board. Nothing else changed.",
+  "why": "The stock ark/pi6x build ships only MMC5983MA + IIS2MDC (both internal to the carrier) and no external mag driver at all, because ARK expects external sensors over DroneCAN. The DEXI-GPS daughterboard is UART + I2C and carries an IST8310 at 0x0E, which answers on I2C bus 1 but had no driver: 'nsh: ist8310: command not found'. Outdoor GPS position hold needs a usable heading source, and the only enumerated compass is the carrier-internal IIS2MDC, which was failing preflight with 'Strong magnetic interference'.",
+  "one_off": true,
+  "build_note": "Local build, not from cloud GHA / R2, so there is no firmware_url. Built in a throwaway git worktree with a pinned toolchain: Python 3.12, cmake 3.31.6 (system cmake 4.x rejects libuavcan's cmake_minimum_required(2.8.11)), setuptools 75.8.0 (84.x dropped pkg_resources, which the DroneCAN DSDL compiler imports).",
+  "how_to_tell_it_is_flashed": "'ver all' reports 'PX4 git-branch: ark/pi6x-ist8310-1.15' where a stock build says 'release/1.15'. Note the version NUMBER is identical either way (1.15.0, git-hash dd5e81470c), so check the branch line, not the version. The functional check is 'ist8310 status' in the MAVLink shell: stock returns 'nsh: ist8310: command not found'.",
+  "flash_verified": "2026-08-11: FLASHED AND VERIFIED on the DEXI-5 v1 at 192.168.68.51 via flash_px4.sh over ssh. Board id 58 matched, erase/program/verify 100%, 28.0s, mavlink-router came back active. Confirmed after reboot: 'ist8310 status' shows it running on I2C bus 1 addr 0x0E with 0 bad registers and 0 bad transfers; 'listener sensor_mag -i 1' publishes device_id 396809 (Type 0x06 = IST8310, I2C:1 0x0E) with error_count 0. Param set survived intact: 1028 before, 1044 after, ZERO lost, the 16 new ones are all CAL_MAG1_* slots auto-created for the newly detected second mag, plus _HASH_CHECK. NOT YET compass-calibrated (CAL_MAG1_ID still 0, CAL_MAG1_PRIO -1) and NOT flight tested.",
+  "flash_headroom_note": "1686364 / 1835008 bytes = 91.9% of the image budget, roughly 145 KB free. Adding further drivers to this board config may not fit."
+}
