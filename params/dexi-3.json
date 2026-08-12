@@ -45,6 +45,12 @@
           "value": 0,
           "kind": "int",
           "note": "CRSF auto-detected on the RC pad \u2014 standalone CRSF driver must stay off"
+        },
+        {
+          "name": "RC_SBUS_PRT_CFG",
+          "value": 0,
+          "kind": "int",
+          "note": "Standalone SBUS driver must stay off \u2014 PX4 1.16.x defaults this to 300 (the RC pad), so sbus_rc races rc_input for the same UART"
         }
       ]
     },
