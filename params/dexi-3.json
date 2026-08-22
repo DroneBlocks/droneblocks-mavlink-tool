@@ -20,7 +20,8 @@
     "blocks": [
       "base-comms",
       "rc",
-      "tune"
+      "tune",
+      "vertical-tune"
     ]
   },
   "blocks": {
@@ -165,6 +166,12 @@
           "value": 1,
           "kind": "int",
           "note": "FC mounted Yaw 45 in the DEXI-3 frame"
+        },
+        {
+          "name": "SENS_FLOW_ROT",
+          "value": 4,
+          "kind": "int",
+          "note": "UP-T201 flow module mounted Yaw 180 in the DEXI-3 frame \u2014 at 0 the flow vector is inverted, the EKF gates it out and Position/Altitude go unstable while Stabilized flies fine"
         },
         {
           "name": "MC_AIRMODE",
@@ -411,6 +418,24 @@
           "kind": "float"
         }
       ]
+    },
+    "vertical-tune": {
+      "category": "tune",
+      "doc": "Vertical-axis tune, flight-validated 2026-08-13 over 10 logged flights. The PX4 airframe file (4701_dexi3_indoor) ships MPC_THR_HOVER 0.25, but a DEXI-3 actually hovers at 0.48 — measured 0.4871 / 0.4785 / 0.4736 in three independent steady hovers. At 0.25 the hover-thrust estimator is clamped to MPC_THR_HOVER +/- HTE_THR_RANGE = [0.05, 0.45], below the true value, so it welds itself to its own ceiling with the accel innovation still asking for more and the vertical feedforward sits 23 points low. Result: takeoff took 5.9 s from the 65% stick threshold to leaving the ground, at 0.90 stick. With these two values it takes 1.5 s at 0.74 stick, and stick noise in hover drops from 0.126 to 0.053 sd. HTE_THR_RANGE is deliberately LEFT at the 0.20 default on both kits. Narrowing it to 0.10 would cap the estimator at 0.58, and measured hover thrust across 90 flights on six DEXI-3 airframes spans 0.27-0.64 (median 0.51, p95 0.62) — 13% of those flights would re-pin at a 0.58 ceiling, and 32% on the heaviest airframe. Too-low is the failure mode that never recovers, so the window stays wide. At 0.48 +/- 0.20 = [0.28, 0.68] every flight measured so far is inside. If landings burp after this change, chase LNDMC_TRIG_TIME 1.0 -> 0.5.",
+      "params": [
+        {
+          "name": "MPC_THR_HOVER",
+          "value": 0.48,
+          "kind": "float",
+          "note": "Measured on a Flight Kit (0.474-0.487 across 5 flights). The Developer Kit is the same airframe carrying the Pi, so it hovers HIGHER — 0.48 is provisional there but still far closer than the 0.25 airframe default, and it errs safe because too-low is the failure mode that pins the estimator. Measure a Dev Kit and split this block per-kit."
+        },
+        {
+          "name": "MPC_TKO_RAMP_T",
+          "value": 1.5,
+          "kind": "float",
+          "note": "Half the PX4 default. The ramp starts the climb-rate limit at -9.81/MPC_Z_VEL_P_ACC = -2.45 m/s, so at 3.0 s the aircraft is held down for 1.35 s after the stick crosses the threshold; at 1.5 s that is 0.67 s. Max tilt in the first second off the ground measured 1.3-3.2 deg, so nothing was given up. Ships WITH MPC_THR_HOVER — a short ramp on a wrong hover thrust is worse than neither."
+        }
+      ]
     }
   },
   "profiles": [
@@ -528,6 +553,7 @@
         "Comms: optical-flow MAVLink link on TELEM3 + CRSF RC pad",
         "RC: CH5 arm/disarm, CH6 Stabilized/Altitude/Position, CH8 kill",
         "Tune: the validated DEXI-3 rate/attitude gains (airmode off, board Yaw-45)",
+        "Vertical: measured hover thrust 0.48 + 1.5 s takeoff ramp (65% stick to airborne: 5.9 s \u2192 1.5 s)",
         "Navigation: indoor flow position hold (EKF2_EV_CTRL = 0, flow + range)",
         "Load this one file in QGC and the drone is ready to fly \u2014 no second file"
       ],
@@ -538,6 +564,7 @@
         "base-comms",
         "rc",
         "tune",
+        "vertical-tune",
         "indoor-flow-nav",
         "indoor-limits"
       ],
@@ -565,6 +592,7 @@
         "Comms: flow + RC baseline PLUS companion links (uXRCE-DDS on TELEM2, mavlink-router on TELEM1)",
         "RC: CH5 arm/disarm, CH6 Stabilized/Altitude/Position, CH8 kill",
         "Tune: the validated DEXI-3 rate/attitude gains",
+        "Vertical: hover thrust 0.48 + 1.5 s takeoff ramp \u2014 provisional here, 0.48 was measured on the lighter Flight Kit",
         "Navigation: indoor flow position hold",
         "Requires the Pi companion running the DEXI-OS image for the ROS2 / WiFi links",
         "One file \u2014 no separate comms file needed"
@@ -577,6 +605,7 @@
         "companion-comms",
         "rc",
         "tune",
+        "vertical-tune",
         "indoor-flow-nav",
         "indoor-limits"
       ],
