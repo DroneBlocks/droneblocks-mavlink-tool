@@ -273,9 +273,9 @@
         },
         {
           "name": "MPC_MAN_TILT_MAX",
-          "value": 60,
+          "value": 25,
           "kind": "float",
-          "note": "beginner tilt limit"
+          "note": "beginner tilt limit; matches MPC_TILTMAX_AIR (25) so Stabilized is no more aggressive than Position/Altitude. PX4 default is 35; the old value of 60 was 71% above stock despite this note."
         }
       ]
     },
