@@ -16,17 +16,10 @@ from pymavlink import mavutil
 CHUNK = 90  # LOG_DATA payload size
 
 def connect():
-    ports = sorted(glob.glob('/dev/cu.usbmodem*'))
-    if not ports:
-        sys.exit("no flight controller found on /dev/cu.usbmodem* — is it plugged in and powered?")
-    port = ports[0]
-    m = mavutil.mavlink_connection(port, baud=115200)
-    for _ in range(4):
-        hb = m.wait_heartbeat(timeout=6)
-        if hb and m.target_system:
-            print(f"# {port} sys {m.target_system} comp {m.target_component}")
-            return m
-    sys.exit("no heartbeat")
+    # Cross-platform via fcbench: serial_ports.fc_ports() for discovery, and the
+    # port opened explicitly so a Windows COM name is not mistaken for a log file.
+    import fcbench
+    return fcbench.connect()
 
 def get_list(m):
     m.mav.log_request_list_send(m.target_system, m.target_component, 0, 0xFFFF)
