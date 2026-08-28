@@ -3,6 +3,7 @@
 Tools for managing PX4 flight controllers — get/set parameters over the network, access the MAVLink console, and inspect live message traffic.
 
 > **Flashing a fresh DEXI-3 FC** (bootloader + PX4 + params over USB, single board or a 10-drone batch)? See **[FLASHING.md](FLASHING.md)**.
+
 > **Testing an optical flow module?** The soak test parks a stationary aircraft over
 > the floor and records flow quality, which separates a faulty module from a bad
 > surface. See **[docs/flow-soak-test.md](docs/flow-soak-test.md)**.
