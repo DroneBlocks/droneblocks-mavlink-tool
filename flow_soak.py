@@ -75,7 +75,7 @@ def main():
             mark += 60.0
 
     if not flow:
-        raise SystemExit("no OPTICAL_FLOW_RAD received — is the module powered?")
+        raise SystemExit("no OPTICAL_FLOW_RAD received: is the module powered?")
 
     t = np.array([x[0] for x in flow])
     q = np.array([x[1] for x in flow])
@@ -113,12 +113,12 @@ def main():
     if rng:
         r = np.array([x[1] for x in rng])
         print(f"\n  height {r.min():.2f}-{r.max():.2f} m "
-              f"(spread {100*(r.max()-r.min()):.1f} cm) — confirms nothing moved")
+              f"(spread {100*(r.max()-r.min()):.1f} cm), confirms nothing moved")
     if temp:
         c = np.array([x[1] for x in temp])
         print(f"  temperature {c[0]:.1f} -> {c[-1]:.1f} degC across the soak")
 
-    print(f"\n  VERDICT: {'*** INTERMITTENT SENSOR *** dropouts with nothing moving' if true_blind > 0.05 else 'CLEAN — the sensor is not the fault'}")
+    print(f"\n  VERDICT: {'*** INTERMITTENT SENSOR *** dropouts with nothing moving' if true_blind > 0.05 else 'CLEAN, the sensor is not the fault'}")
 
 
 if __name__ == '__main__':

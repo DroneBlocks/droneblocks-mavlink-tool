@@ -3,10 +3,10 @@
 
 Two things every bench script needs and nobody should copy-paste again:
 
-1. ``connect()`` — cross-platform, via ``serial_ports.fc_ports()``. Works on
+1. ``connect()``: cross-platform, via ``serial_ports.fc_ports()``. Works on
    Windows COM ports and Linux /dev/ttyACM* as well as macOS, so a bench test
    runs the same on the Mac and on rogbeast.
-2. ``patch_pymavlink()`` — pymavlink 2.4.49 raises ``TypeError`` when it caches an
+2. ``patch_pymavlink()``: pymavlink 2.4.49 raises ``TypeError`` when it caches an
    *instanced* message (anything with a sensor index, which includes
    DISTANCE_SENSOR). Without this, any script subscribing to those messages dies
    a few seconds in. Call it before ``mavutil.mavlink_connection``.
@@ -49,7 +49,7 @@ def connect(baud=115200, timeout=20, quiet=False):
     patch_pymavlink()
     ports = serial_ports.fc_ports()
     if not ports:
-        sys.exit("no flight controller found — is it plugged in and powered?")
+        sys.exit("no flight controller found: is it plugged in and powered?")
     port = ports[0]
     m = mavutil.mavlink_connection(port, baud=baud)
     deadline = time.time() + timeout
