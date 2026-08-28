@@ -30,7 +30,7 @@ at once. This test is the cheapest way to separate the two, and it runs unattend
 ### Windows
 
 ```
-cd C:\Users\denni\droneblocks-mavlink-tool
+cd %USERPROFILE%\droneblocks-mavlink-tool
 git pull
 venv\Scripts\python flow_soak.py --minutes 10 --label cf
 ```
