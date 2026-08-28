@@ -8,18 +8,17 @@ Usage:
     source venv/bin/activate
     python dump_params.py drone1_baseline.params
 """
-import sys, time, glob
+import sys, time
 from pymavlink import mavutil
 
+import fcbench
+import serial_ports
+
 def connect():
-    port = sorted(glob.glob('/dev/cu.usbmodem*'))[0]
-    m = mavutil.mavlink_connection(port, baud=115200)
-    for _ in range(4):
-        hb = m.wait_heartbeat(timeout=6)
-        if hb and m.target_system:
-            print(f"# {port} sys {m.target_system} comp {m.target_component}")
-            return m, port
-    sys.exit("no heartbeat")
+    # Cross-platform: fcbench uses serial_ports.fc_ports() and opens the port
+    # explicitly, so this works on Windows COM ports and Linux ttyACM too.
+    m = fcbench.connect()
+    return m, (serial_ports.fc_ports() or ['?'])[0]
 
 def get_version(m):
     # ask for AUTOPILOT_VERSION
