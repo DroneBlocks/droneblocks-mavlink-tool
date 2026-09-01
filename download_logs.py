@@ -7,7 +7,9 @@ Usage:
     python download_logs.py 157 155 154 153      # download these log ids
     python download_logs.py --list               # just list logs
 
-Writes ./logs/log_<id>.ulg. Chunked with gap-fill + re-request; tolerant of the
+Writes ./logs/log_<id>.ulg, and REFUSES to overwrite an existing one
+(log ids restart per aircraft). Use flightlog.py sync for board-filed storage.
+ Chunked with gap-fill + re-request; tolerant of the
 flaky USB CDC link (re-requests missing 90-byte blocks until complete).
 """
 import sys, os, time, glob, math, argparse
@@ -16,17 +18,10 @@ from pymavlink import mavutil
 CHUNK = 90  # LOG_DATA payload size
 
 def connect():
-    ports = sorted(glob.glob('/dev/cu.usbmodem*'))
-    if not ports:
-        sys.exit("no flight controller found on /dev/cu.usbmodem* — is it plugged in and powered?")
-    port = ports[0]
-    m = mavutil.mavlink_connection(port, baud=115200)
-    for _ in range(4):
-        hb = m.wait_heartbeat(timeout=6)
-        if hb and m.target_system:
-            print(f"# {port} sys {m.target_system} comp {m.target_component}")
-            return m
-    sys.exit("no heartbeat")
+    # Cross-platform via fcbench: serial_ports.fc_ports() for discovery, and the
+    # port opened explicitly so a Windows COM name is not mistaken for a log file.
+    import fcbench
+    return fcbench.connect()
 
 def get_list(m):
     m.mav.log_request_list_send(m.target_system, m.target_component, 0, 0xFFFF)
@@ -41,6 +36,16 @@ def get_list(m):
         num=msg.num_logs; logs[msg.id]=msg.size
         if num and len(logs)>=num: break
     return logs
+
+def _board_of(path):
+    """sys_uuid tail of an existing ulog, or None. Used only to name the owner in
+    the overwrite refusal, so a missing pyulog must not break downloading."""
+    try:
+        from pyulog import ULog
+        return ULog(path, message_name_filter_list=[]).msg_info_dict.get('sys_uuid', '')[-8:] or None
+    except Exception:
+        return None
+
 
 def download(m, log_id, size, out):
     nchunks = math.ceil(size / CHUNK)
@@ -109,6 +114,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("ids", nargs="*", type=int)
     ap.add_argument("--list", action="store_true")
+    ap.add_argument('--force', action='store_true',
+                    help='overwrite an existing logs/log_<id>.ulg (may belong to another aircraft)')
     args = ap.parse_args()
     m = connect()
     logs = get_list(m)
@@ -120,7 +127,18 @@ def main():
     for log_id in args.ids:
         if log_id not in logs:
             print(f"  id {log_id}: NOT FOUND"); failed.append(log_id); continue
-        if not download(m, log_id, logs[log_id], f"logs/log_{log_id}.ulg"):
+        out = f"logs/log_{log_id}.ulg"
+        # Log ids restart per aircraft, so logs/log_25.ulg from a second airframe
+        # lands on the first one's file with no warning. Four boards already share
+        # this directory and two of their id ranges overlap. Refuse rather than
+        # silently destroy a flight we cannot re-fly.
+        if os.path.exists(out) and not args.force:
+            owner = _board_of(out)
+            print(f"  id {log_id}: REFUSING, {out} already exists"
+                  + (f" and belongs to board ...{owner}" if owner else ""))
+            print(f"             rename it, use --out, or pass --force to overwrite.")
+            failed.append(log_id); continue
+        if not download(m, log_id, logs[log_id], out):
             failed.append(log_id)
     if failed:
         # Exit non-zero so a batch failure is visible to whatever called this.

@@ -51,7 +51,13 @@ def connect(baud=115200, timeout=20, quiet=False):
     if not ports:
         sys.exit("no flight controller found: is it plugged in and powered?")
     port = ports[0]
-    m = mavutil.mavlink_connection(port, baud=baud)
+    # Open the serial port EXPLICITLY. mavutil.mavlink_connection() guesses the
+    # device type, and one of its branches is `if os.path.isfile(device)` -> treat
+    # it as a telemetry log. On Windows a DOS device name like "COM6" can satisfy
+    # os.path.isfile, so the port gets opened as a log file and the connection
+    # fails with a PermissionError or silently reads garbage. fc_ports() only ever
+    # returns real serial ports, so go straight to mavserial and skip the guessing.
+    m = mavutil.mavserial(port, baud=baud, source_system=255, source_component=0)
     deadline = time.time() + timeout
     while time.time() < deadline:
         hb = m.wait_heartbeat(timeout=6)

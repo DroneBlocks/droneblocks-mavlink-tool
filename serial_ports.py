@@ -19,7 +19,15 @@ import sys
 #   0x26AC 3DR/PX4   — classic PX4 CDC VID
 #   0x3185 / 0x2DAE  — Auterion (newer PX4 boards)
 #   0x1209 pid.codes — generic open-hardware USB VID
-PX4_VIDS = {0x0483, 0x26AC, 0x3185, 0x2DAE, 0x1209}
+#   0x1B8C DroneBlocks — our own H743-AIO reports this, and it is NOT a PX4 VID,
+#                        so without it the fallback branch below can hand back an
+#                        unrelated USB serial device.
+PX4_VIDS = {0x0483, 0x26AC, 0x3185, 0x2DAE, 0x1209, 0x1B8C}
+
+# VIDs that enumerate as USB CDC next to an FC but must never be written to.
+# 0x1915 Nordic Semiconductor — nRF dongles and the nRF Sniffer for Bluetooth LE
+# 0x0403 FTDI / 0x10C4 SiLabs — generic USB-serial adapters (ESCs, radios, jigs)
+BLOCKED_VIDS = {0x1915, 0x0403, 0x10C4}
 
 
 def fc_ports():
@@ -28,13 +36,24 @@ def fc_ports():
     macOS: /dev/cu.usbmodem* (unchanged). Windows/Linux: USB serial ports,
     preferring known PX4 vendor IDs, else any real (VID-bearing) USB serial port.
     """
-    if sys.platform == "darwin":
-        return sorted(glob.glob("/dev/cu.usbmodem*"))
-
     from serial.tools.list_ports import comports
-    real = [p for p in comports() if p.vid is not None]   # drop virtual/BT ports
+
+    # Drop virtual/Bluetooth ports (no VID) and anything on the blocklist. The
+    # blocklist matters: an nRF sniffer enumerates as /dev/cu.usbmodem* on macOS
+    # exactly like the FC, so the old bare glob picked between them by luck of
+    # sort order, and a param write could land on the wrong device.
+    real = [p for p in comports()
+            if p.vid is not None and p.vid not in BLOCKED_VIDS]
     known = sorted(p.device for p in real if p.vid in PX4_VIDS)
-    return known if known else sorted(p.device for p in real)
+    if known:
+        return known
+
+    if sys.platform == "darwin":
+        # Fall back to the historical glob, still minus the blocked devices.
+        blocked = {p.device for p in comports() if p.vid in BLOCKED_VIDS}
+        return [d for d in sorted(glob.glob("/dev/cu.usbmodem*")) if d not in blocked]
+
+    return sorted(p.device for p in real)
 
 
 def use_utf8_console():
