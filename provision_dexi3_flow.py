@@ -51,7 +51,8 @@ AIRFRAME_ID = 4701                          # DroneBlocks H743-AIO / UP-T201
 # "developer-kit" = base comms + companion links (mavlink-router + uXRCE-DDS) +
 # RC map + flight tune + indoor flow nav + indoor limits. That is what this
 # script has always written; the RC map is what it was missing.
-PARAMS = dexi_params.load_profile("developer-kit")
+DEFAULT_PROFILE = "developer-kit"
+PARAMS = dexi_params.load_profile(DEFAULT_PROFILE)
 
 INT32  = mavutil.mavlink.MAV_PARAM_TYPE_INT32
 REAL32 = mavutil.mavlink.MAV_PARAM_TYPE_REAL32
@@ -244,8 +245,21 @@ def main():
     ap.add_argument("--device", help="serial device (default: auto-detect USB serial: cu.usbmodem/COMx/ttyACM)")
     ap.add_argument("--watch", action="store_true", help="mass-update loop")
     ap.add_argument("--no-reboot", action="store_true", help="skip final reboot+persistence check")
+    ap.add_argument("--profile", default=DEFAULT_PROFILE,
+                    help=f"dexi-fc-params profile to apply (default: {DEFAULT_PROFILE}). "
+                         "Use flight-kit for an aircraft with NO Pi companion: "
+                         "developer-kit additionally configures uXRCE-DDS and "
+                         "mavlink-router on TELEM1/2, which a flight kit has "
+                         "nothing attached to.")
     ap.add_argument("--verify-only", action="store_true", help="read+check only, write nothing")
     a = ap.parse_args()
+    if a.profile != DEFAULT_PROFILE:
+        global PARAMS
+        try:
+            PARAMS = dexi_params.load_profile(a.profile)
+        except Exception as e:
+            sys.exit(f"--profile {a.profile}: {e}")
+        print(f"profile: {a.profile} ({len(PARAMS)} params)")
     if a.watch:
         watch()
     else:
