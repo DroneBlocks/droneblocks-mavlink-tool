@@ -21,7 +21,8 @@
       "base-comms",
       "rc",
       "tune",
-      "vertical-tune"
+      "vertical-tune",
+      "estimator-arch"
     ]
   },
   "blocks": {
@@ -276,6 +277,24 @@
           "value": 25,
           "kind": "float",
           "note": "beginner tilt limit; matches MPC_TILTMAX_AIR (25) so Stabilized is no more aggressive than Position/Altitude. PX4 default is 35; the old value of 60 was 71% above stock despite this note."
+        }
+      ]
+    },
+    "estimator-arch": {
+      "category": "navigation",
+      "doc": "Run ONE EKF instance. Multi-EKF gives each IMU its own filter plus a runtime selector; that only works when an absolute position source ties the instances together. Flow supplies velocity, not position, so on a GPS-denied DEXI-3 the instances dead-reckon apart with nothing to pull them back, and every selector switch steps position, velocity and heading at once. IMU voting and failover stay with the sensors module, so a failed IMU is still handled.",
+      "params": [
+        {
+          "name": "EKF2_MULTI_IMU",
+          "value": 0,
+          "kind": "int",
+          "note": "0 disables multi-EKF. PX4 default. Reboot required."
+        },
+        {
+          "name": "SENS_IMU_MODE",
+          "value": 1,
+          "kind": "int",
+          "note": "1 = sensors module votes across IMUs and fails over. PX4 default. Must be 1 whenever EKF2_MULTI_IMU is 0."
         }
       ]
     },
@@ -565,6 +584,7 @@
         "rc",
         "tune",
         "vertical-tune",
+        "estimator-arch",
         "indoor-flow-nav",
         "indoor-limits"
       ],
@@ -606,6 +626,7 @@
         "rc",
         "tune",
         "vertical-tune",
+        "estimator-arch",
         "indoor-flow-nav",
         "indoor-limits"
       ],
