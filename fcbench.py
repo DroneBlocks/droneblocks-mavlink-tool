@@ -11,6 +11,7 @@ Two things every bench script needs and nobody should copy-paste again:
    DISTANCE_SENSOR). Without this, any script subscribing to those messages dies
    a few seconds in. Call it before ``mavutil.mavlink_connection``.
 """
+import os
 import sys
 import time
 
@@ -45,12 +46,25 @@ def patch_pymavlink():
 
 
 def connect(baud=115200, timeout=20, quiet=False):
-    """Return a heartbeating mavlink connection to the first FC we can find."""
+    """Return a heartbeating mavlink connection to an FC.
+
+    Set FC_PORT to pin a specific device. On a bench with several boards
+    connected, which one sorts first is luck, and a param write to the wrong
+    board looks exactly like success -- so say which one you mean.
+    """
     patch_pymavlink()
-    ports = serial_ports.fc_ports()
-    if not ports:
-        sys.exit("no flight controller found: is it plugged in and powered?")
-    port = ports[0]
+    port = os.environ.get("FC_PORT")
+    if port:
+        if not os.path.exists(port):
+            sys.exit(f"FC_PORT={port}: no such device")
+    else:
+        ports = serial_ports.fc_ports()
+        if not ports:
+            sys.exit("no flight controller found: is it plugged in and powered?")
+        if len(ports) > 1 and not quiet:
+            print(f"# WARNING: {len(ports)} boards connected {ports}; using {ports[0]}. "
+                  f"Set FC_PORT to choose.", file=sys.stderr)
+        port = ports[0]
     # Open the serial port EXPLICITLY. mavutil.mavlink_connection() guesses the
     # device type, and one of its branches is `if os.path.isfile(device)` -> treat
     # it as a telemetry log. On Windows a DOS device name like "COM6" can satisfy
