@@ -43,6 +43,9 @@ APP        = os.path.join(ASSETS, "droneblocks_h743-aio_default.px4")
 MANIFEST   = os.path.join(ASSETS, "manifest.json")
 PXUP       = os.path.join(FWDIR, "px_uploader.py")
 PROVISION  = os.path.join(HERE, "provision_dexi3_flow.py")
+# Which dexi-fc-params profile the params stage writes. flight-kit is the
+# aircraft-without-a-Pi set; override with --profile.
+PROFILE    = "developer-kit"
 PY         = sys.executable
 VERBOSE    = False   # --verbose: stream child tool (dfu-util/px_uploader/provision) output
 FW_LABEL   = ""      # what gets printed as "the firmware" (manifest version, or an override)
@@ -149,7 +152,7 @@ def stage_app():
 
 def stage_params():
     print("  [params] provisioning DEXI-3 profile…")
-    rc = subprocess.run([PY, PROVISION, "--no-reboot"], **_sink()).returncode
+    rc = subprocess.run([PY, PROVISION, "--no-reboot", "--profile", PROFILE], **_sink()).returncode
     if rc != 0:
         print("    ✗ provision reported issues — run provision_dexi3_flow.py --verify-only to inspect.")
         return False
@@ -175,6 +178,7 @@ def flash_board(state, params_only):
 
 
 def main():
+    global VERBOSE, APP, BOOTLOADER, FW_LABEL, PROFILE
     ap = argparse.ArgumentParser()
     ap.add_argument("--count", type=int, default=0, help="stop after N boards (0 = until Ctrl-C)")
     ap.add_argument("--params-only", action="store_true",
@@ -186,8 +190,12 @@ def main():
                          "(e.g. a branch or customer build kept in another repo)")
     ap.add_argument("--bootloader", metavar="PATH",
                     help="bootloader .bin to flash instead of the bundled one")
+    ap.add_argument("--profile", default=PROFILE,
+                    help=f"dexi-fc-params profile for the params stage "
+                         f"(default: {PROFILE}); use flight-kit for an aircraft "
+                         f"with no Pi companion")
     args = ap.parse_args()
-    global VERBOSE, APP, BOOTLOADER, FW_LABEL
+    PROFILE = args.profile
     VERBOSE = args.verbose
 
     # An override is flashed to every board in the run, so a bad path must stop the

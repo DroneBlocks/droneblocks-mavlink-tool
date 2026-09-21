@@ -32,6 +32,9 @@ BOOTLOADER = os.path.join(ASSETS, "droneblocks_h743-aio_bootloader.bin")
 APP        = os.path.join(ASSETS, "droneblocks_h743-aio_default.px4")
 PXUP       = os.path.join(FWDIR, "px_uploader.py")
 PROVISION  = os.path.join(HERE, "provision_dexi3_flow.py")
+# Which dexi-fc-params profile the params stage writes. flight-kit is the
+# aircraft-without-a-Pi set; override with --profile.
+PROFILE    = "developer-kit"
 PY         = sys.executable
 
 def sha256(path):
@@ -78,13 +81,18 @@ def wait_app(timeout=60):
     return None
 
 def main():
-    global APP, BOOTLOADER
+    global APP, BOOTLOADER, PROFILE
     ap = argparse.ArgumentParser(description="Full flash for a DroneBlocks H743-AIO over USB.")
     ap.add_argument("--firmware", metavar="PATH",
                     help="app firmware .px4 to flash instead of the bundled build")
     ap.add_argument("--bootloader", metavar="PATH",
                     help="bootloader .bin to flash instead of the bundled one")
+    ap.add_argument("--profile", default=PROFILE,
+                    help=f"dexi-fc-params profile for the params stage "
+                         f"(default: {PROFILE}); use flight-kit for an aircraft "
+                         f"with no Pi companion")
     args = ap.parse_args()
+    PROFILE = args.profile
 
     overrides = []
     for flag, path in (("--firmware", args.firmware), ("--bootloader", args.bootloader)):
@@ -158,7 +166,7 @@ def main():
 
     # ── [3/3] DEXI-3 params ────────────────────────────────────────────────
     print("\n[3/3] DEXI-3 INDOOR-FLOW PARAMS")
-    rc = subprocess.run([PY, PROVISION, "--no-reboot"]).returncode
+    rc = subprocess.run([PY, PROVISION, "--no-reboot", "--profile", PROFILE]).returncode
 
     print("\n" + "=" * 66)
     print(" ✅ DONE — bootloader + PX4 + params flashed." if rc == 0
