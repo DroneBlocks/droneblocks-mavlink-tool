@@ -11,8 +11,14 @@ bootloader and px_uploader syncs immediately — no replug — and the app boots
 clean. The only thing you touch is the BOOT button.
 
 Run:  ./venv/bin/python flash_new_fc.py
+      ./venv/bin/python flash_new_fc.py --firmware /path/to/custom.px4
+
+--firmware / --bootloader flash a .px4 / .bin from somewhere else instead of the
+bundled assets, which is how a branch or customer build (e.g. the BNSF auto-takeoff
+firmware) gets onto a board without being copied into this repo. An override is
+called out on screen with its sha256, because nothing in this repo records it.
 """
-import os, subprocess, sys, time
+import argparse, hashlib, os, subprocess, sys, time
 from shutil import which
 from serial_ports import fc_ports, pxup_port_arg, use_utf8_console
 
@@ -26,6 +32,14 @@ APP        = os.path.join(ASSETS, "droneblocks_h743-aio_default.px4")
 PXUP       = os.path.join(FWDIR, "px_uploader.py")
 PROVISION  = os.path.join(HERE, "provision_dexi3_flow.py")
 PY         = sys.executable
+
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
 
 def usbmodems():
     return fc_ports()   # cross-platform (macOS usbmodem / Windows COM / Linux ttyACM)
@@ -63,6 +77,26 @@ def wait_app(timeout=60):
     return None
 
 def main():
+    global APP, BOOTLOADER
+    ap = argparse.ArgumentParser(description="Full flash for a DroneBlocks H743-AIO over USB.")
+    ap.add_argument("--firmware", metavar="PATH",
+                    help="app firmware .px4 to flash instead of the bundled build")
+    ap.add_argument("--bootloader", metavar="PATH",
+                    help="bootloader .bin to flash instead of the bundled one")
+    args = ap.parse_args()
+
+    overrides = []
+    for flag, path in (("--firmware", args.firmware), ("--bootloader", args.bootloader)):
+        if path:
+            full = os.path.abspath(os.path.expanduser(path))
+            if not os.path.isfile(full):
+                sys.exit(f"{flag}: no such file: {full}")
+            if flag == "--firmware":
+                APP = full
+            else:
+                BOOTLOADER = full
+            overrides.append((flag, full))
+
     for f in (BOOTLOADER, APP, PXUP, PROVISION):
         if not os.path.exists(f):
             sys.exit(f"missing asset: {f}\n(run firmware/fetch-latest.sh, or git pull)")
@@ -73,6 +107,11 @@ def main():
     print("=" * 66)
     print(" DroneBlocks H743-AIO — full flash: bootloader + PX4 + DEXI-3 params")
     print("=" * 66)
+    for flag, full in overrides:
+        print(f" ⚠ {flag} override — not the build this repo ships:")
+        print(f"     {os.path.basename(full)}")
+        print(f"     sha256 {sha256(full)}")
+        print(f"     {full}")
 
     # ── [1/3] Bootloader via DFU ───────────────────────────────────────────
     # The DFU write can glitch mid-download (transient USB) and leave the chip

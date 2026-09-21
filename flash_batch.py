@@ -18,11 +18,18 @@ Run:  ./venv/bin/python flash_batch.py                 # flash until Ctrl-C
       ./venv/bin/python flash_batch.py --count 10      # stop after 10 boards
       ./venv/bin/python flash_batch.py --params-only   # already-flashed → just params
       ./venv/bin/python flash_batch.py --count 1 --verbose  # one board, full tool output (debug)
+      ./venv/bin/python flash_batch.py --firmware /path/to/custom.px4   # a branch/customer build
+
+By default the bundled build is used. --firmware / --bootloader point at a .px4 / .bin
+somewhere else, which is how a customer build (e.g. the BNSF auto-takeoff branch) gets
+onto a batch without being copied into this repo.
 
 The firmware version (from firmware/droneblocks-h743-aio/manifest.json) is printed up
-front and on every PASS line, so the run is self-documenting.
+front and on every PASS line, so the run is self-documenting. With --firmware the
+manifest no longer describes what is being flashed, so the file name and its sha256
+are printed in its place — the run stays self-documenting either way.
 """
-import argparse, json, os, subprocess, sys, time
+import argparse, hashlib, json, os, subprocess, sys, time
 from shutil import which
 from serial_ports import fc_ports, pxup_port_arg, use_utf8_console
 
@@ -38,6 +45,15 @@ PXUP       = os.path.join(FWDIR, "px_uploader.py")
 PROVISION  = os.path.join(HERE, "provision_dexi3_flow.py")
 PY         = sys.executable
 VERBOSE    = False   # --verbose: stream child tool (dfu-util/px_uploader/provision) output
+FW_LABEL   = ""      # what gets printed as "the firmware" (manifest version, or an override)
+
+
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def _sink():
@@ -165,9 +181,26 @@ def main():
                     help="for already-flashed boards: skip the app flash, only (re)write params")
     ap.add_argument("--verbose", action="store_true",
                     help="stream dfu-util/px_uploader/provision output (for debugging a failed flash)")
+    ap.add_argument("--firmware", metavar="PATH",
+                    help="app firmware .px4 to flash instead of the bundled build "
+                         "(e.g. a branch or customer build kept in another repo)")
+    ap.add_argument("--bootloader", metavar="PATH",
+                    help="bootloader .bin to flash instead of the bundled one")
     args = ap.parse_args()
-    global VERBOSE
+    global VERBOSE, APP, BOOTLOADER, FW_LABEL
     VERBOSE = args.verbose
+
+    # An override is flashed to every board in the run, so a bad path must stop the
+    # run here rather than fail on board 1 of 10 with the operator already plugging in.
+    for flag, path in (("--firmware", args.firmware), ("--bootloader", args.bootloader)):
+        if path:
+            full = os.path.abspath(os.path.expanduser(path))
+            if not os.path.isfile(full):
+                sys.exit(f"{flag}: no such file: {full}")
+            if flag == "--firmware":
+                APP = full
+            else:
+                BOOTLOADER = full
 
     for f in (BOOTLOADER, APP, PXUP, PROVISION):
         if not os.path.exists(f):
@@ -180,7 +213,17 @@ def main():
     print("=" * 72)
     print(" DroneBlocks H743-AIO — BATCH flash")
     print(f"   board   : {m['board']} (board_id {m['board_id']})")
-    print(f"   firmware: {m['version']}  built {m['built_at']}")
+    if args.firmware:
+        FW_LABEL = os.path.basename(APP)
+        print(f"   firmware: {FW_LABEL}  ⚠ --firmware override (manifest does NOT describe this)")
+        print(f"             sha256 {sha256(APP)}")
+        print(f"             {APP}")
+    else:
+        FW_LABEL = m["version"]
+        print(f"   firmware: {FW_LABEL}  built {m['built_at']}")
+    if args.bootloader:
+        print(f"   bootldr : {os.path.basename(BOOTLOADER)}  ⚠ --bootloader override")
+        print(f"             sha256 {sha256(BOOTLOADER)}")
     print(f"   mode    : {'PARAMS-ONLY (keep existing firmware)' if args.params_only else 'flash firmware + params'}")
     print(f"   target  : {f'{args.count} boards' if args.count else 'until Ctrl-C'}")
     print("=" * 72)
@@ -204,7 +247,7 @@ def main():
             good = flash_board(state, args.params_only)
             if good:
                 ok += 1
-                print(f"└─ ✅ DRONE {n} DONE ({m['version']}).  Unplug it; plug in the next board.")
+                print(f"└─ ✅ DRONE {n} DONE ({FW_LABEL}).  Unplug it; plug in the next board.")
             else:
                 fail += 1
                 print(f"└─ ⚠️  DRONE {n} FAILED — see above.  Unplug, fix, retry as the next board.")
