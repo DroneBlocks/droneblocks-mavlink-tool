@@ -21,8 +21,8 @@ Run:  ./venv/bin/python flash_batch.py                 # flash until Ctrl-C
       ./venv/bin/python flash_batch.py --firmware /path/to/custom.px4   # a branch/customer build
 
 By default the bundled build is used. --firmware / --bootloader point at a .px4 / .bin
-somewhere else, which is how a customer build (e.g. the BNSF auto-takeoff branch) gets
-onto a batch without being copied into this repo.
+somewhere else, which is how a program-specific build (a branch build, or one pinned
+for a particular deployment) gets onto a batch without being copied into this repo.
 
 The firmware version (from firmware/droneblocks-h743-aio/manifest.json) is printed up
 front and on every PASS line, so the run is self-documenting. With --firmware the

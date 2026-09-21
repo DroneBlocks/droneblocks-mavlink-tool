@@ -14,8 +14,9 @@ Run:  ./venv/bin/python flash_new_fc.py
       ./venv/bin/python flash_new_fc.py --firmware /path/to/custom.px4
 
 --firmware / --bootloader flash a .px4 / .bin from somewhere else instead of the
-bundled assets, which is how a branch or customer build (e.g. the BNSF auto-takeoff
-firmware) gets onto a board without being copied into this repo. An override is
+bundled assets, which is how a program-specific build (a branch build, or one pinned
+for a particular deployment) gets onto a board without being copied into this repo.
+An override is
 called out on screen with its sha256, because nothing in this repo records it.
 """
 import argparse, hashlib, os, subprocess, sys, time
