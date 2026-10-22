@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """Spin individual PX4 motors to verify motor mapping / spin direction.
 
-This is the same operation as QGC's Setup > Motors screen: it sends
-MAV_CMD_DO_MOTOR_TEST over MAVLink (through mavlink-router).
+This is the same operation as QGC's Actuators > Motors sliders: it sends
+MAV_CMD_ACTUATOR_TEST over MAVLink, either through mavlink-router (a host)
+or straight to the FC over USB (a /dev/ path). Needs COM_MOT_TEST_EN=1 and
+a disarmed vehicle. PX4 1.16 does NOT handle MAV_CMD_DO_MOTOR_TEST (it acks
+UNSUPPORTED), which is why this script no longer sends it.
 
-    python motor_test.py <host> <motor|all> [throttle_pct] [seconds]
+    python motor_test.py <host|/dev/port> <motor|all> [throttle_pct] [seconds]
 
 Examples:
     python motor_test.py 192.168.4.1 1            # spin PX4 Motor 1 @ 6% for 3s
     python motor_test.py 192.168.4.1 2 8 3        # Motor 2 @ 8% for 3s
     python motor_test.py 192.168.4.1 all          # sweep 1..4, one at a time
+    python motor_test.py /dev/cu.usbmodem01 all 25 1   # over USB
 
 *** PROPELLERS OFF. Keep hands clear. ***
 """
@@ -18,12 +22,16 @@ import time
 
 from pymavlink import mavutil
 
-MOTOR_TEST_THROTTLE_PERCENT = 0  # param2 type
+MAV_CMD_ACTUATOR_TEST = 310  # not in pymavlink's bundled ardupilotmega dialect
+ACTUATOR_TEST_MAX_TIMEOUT = 3.0  # PX4 caps each command at 3s; refresh to run longer
+ACK_RESULTS = {0: 'ACCEPTED', 1: 'TEMPORARILY_REJECTED', 2: 'DENIED', 3: 'UNSUPPORTED', 4: 'FAILED'}
 
 
 def connect(host, port=14550):
-    uri = f'udpout:{host}:{port}'
-    m = mavutil.mavlink_connection(uri)
+    if host.startswith('/dev/'):
+        m = mavutil.mavlink_connection(host, baud=57600)
+    else:
+        m = mavutil.mavlink_connection(f'udpout:{host}:{port}')
     # Nudge the FC so it starts streaming to us, then wait for a real sysid.
     deadline = time.time() + 15
     while time.time() < deadline:
@@ -34,25 +42,33 @@ def connect(host, port=14550):
         if hb is not None and m.target_system != 0:
             break
     if m.target_system == 0:
-        raise SystemExit('No heartbeat from flight controller — check mavlink-router / host.')
+        raise SystemExit('No heartbeat from flight controller — check mavlink-router / host / USB port.')
     print(f'Connected to system {m.target_system}, component {m.target_component}', flush=True)
     return m
 
 
 def spin(m, motor, throttle, secs):
     print(f'  Motor {motor}: {throttle}% for {secs}s ...', flush=True)
-    m.mav.command_long_send(
-        m.target_system, m.target_component,
-        mavutil.mavlink.MAV_CMD_DO_MOTOR_TEST, 0,
-        motor,                         # param1: motor number (1-based, PX4 Motor function)
-        MOTOR_TEST_THROTTLE_PERCENT,   # param2: throttle type = percent
-        throttle,                      # param3: throttle value
-        secs,                          # param4: timeout / run duration (s)
-        0,                             # param5: motor count (0 = single)
-        0,                             # param6: test order (0 = default)
-        0)
-    # let it run, then a beat of silence before the next motor
-    time.sleep(secs + 1.0)
+    end = time.time() + secs
+    while True:
+        left = end - time.time()
+        if left <= 0:
+            break
+        m.mav.command_long_send(
+            m.target_system, mavutil.mavlink.MAV_COMP_ID_AUTOPILOT1,
+            MAV_CMD_ACTUATOR_TEST, 0,
+            throttle / 100.0,                          # param1: value, 0..1 for motors
+            min(left, ACTUATOR_TEST_MAX_TIMEOUT),      # param2: timeout (s), motor stops after it
+            0, 0,
+            motor,                                     # param5: output function (1 = Motor 1)
+            0, 0)
+        ack = m.recv_match(type='COMMAND_ACK', blocking=True, timeout=2)
+        if ack is None or ack.result != 0:
+            result = 'no ACK' if ack is None else ACK_RESULTS.get(ack.result, ack.result)
+            raise SystemExit(f'  Motor {motor}: rejected ({result}) — disarmed? COM_MOT_TEST_EN=1?')
+        time.sleep(min(left, ACTUATOR_TEST_MAX_TIMEOUT - 0.5))
+    # a beat of silence before the next motor
+    time.sleep(1.0)
 
 
 def main():
