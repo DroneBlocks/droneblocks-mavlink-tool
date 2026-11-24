@@ -8,7 +8,10 @@ Usage:
     python download_logs.py --list               # just list logs
 
 Writes ./logs/log_<id>.ulg, and REFUSES to overwrite an existing one
-(log ids restart per aircraft). Use flightlog.py sync for board-filed storage.
+(log ids restart per aircraft). Skips the log the FC is still writing (this
+USB/Wi-Fi session) and checks every download with ulog_check before keeping it;
+it prints the sd-card session each file came from, because ids shift between
+connections. Use flightlog.py sync for board-filed storage.
  Chunked with gap-fill + re-request; tolerant of the
 flaky USB CDC link (re-requests missing 90-byte blocks until complete).
 """
@@ -47,7 +50,27 @@ def _board_of(path):
         return None
 
 
+def active_ids(m, first, wait=2.0):
+    """Ids whose size grew across two listings: the log the FC is writing now.
+    Its download is a buffered snapshot that will not parse, and it is the
+    current USB session, never the flight."""
+    time.sleep(wait)
+    second = get_list(m)
+    return {i for i in second if i in first and second[i] > first[i]}
+
+
+def drain(m, quiet=0.5, cap=5.0):
+    """Stop any transfer still streaming from an earlier request and swallow
+    its LOG_DATA, so stale chunks cannot land in the next file."""
+    m.mav.log_request_end_send(m.target_system, m.target_component)
+    t0 = last = time.time()
+    while time.time() - last < quiet and time.time() - t0 < cap:
+        if m.recv_match(type='LOG_DATA', blocking=True, timeout=quiet) is not None:
+            last = time.time()
+
+
 def download(m, log_id, size, out):
+    drain(m)
     nchunks = math.ceil(size / CHUNK)
     buf = bytearray(size)
     have = bytearray(nchunks)
@@ -105,9 +128,24 @@ def download(m, log_id, size, out):
               f"({missing} of {nchunks} blocks missing after {dt:.0f}s). Nothing written — "
               f"a ulog with gaps will not open in Flight Review. Re-run to retry.")
         return False
-    with open(out, 'wb') as f:
+    tmp = out + '.part'
+    with open(tmp, 'wb') as f:
         f.write(buf)
-    print(f"\r  id {log_id}: 100.0% complete  ({got*CHUNK/1024:.0f} KB in {dt:.0f}s) -> {out}")
+    try:
+        import ulog_check
+        ok, why, info = ulog_check.check(tmp)
+    except ImportError:                     # no pyulog: keep the old behavior
+        ok, why, info = True, [], None
+    except Exception as e:
+        ok, why, info = False, [f"does not parse: {e}"], None
+    if not ok:
+        os.remove(tmp)
+        print(f"\r  id {log_id}: BAD DOWNLOAD, nothing written: " + "; ".join(why))
+        return False
+    os.replace(tmp, out)
+    desc = (f"  {info['session']}, {info['duration']:.0f} s, "
+            f"{'armed' if info['armed'] else 'never armed'}") if info else ''
+    print(f"\r  id {log_id}: 100.0% complete  ({got*CHUNK/1024:.0f} KB in {dt:.0f}s) -> {out}{desc}")
     return True
 
 def main():
@@ -116,17 +154,26 @@ def main():
     ap.add_argument("--list", action="store_true")
     ap.add_argument('--force', action='store_true',
                     help='overwrite an existing logs/log_<id>.ulg (may belong to another aircraft)')
+    ap.add_argument('--allow-active', action='store_true',
+                    help='download the log the FC is still writing (it will not parse)')
     args = ap.parse_args()
     m = connect()
     logs = get_list(m)
+    active = active_ids(m, logs)
     if args.list or not args.ids:
-        for i in sorted(logs): print(f"  id {i:3d}  {logs[i]/1024:8.0f} KB")
+        for i in sorted(logs):
+            print(f"  id {i:3d}  {logs[i]/1024:8.0f} KB"
+                  + ("   ACTIVE: being written now, not a flight" if i in active else ""))
         return
     os.makedirs("logs", exist_ok=True)
     failed = []
     for log_id in args.ids:
         if log_id not in logs:
             print(f"  id {log_id}: NOT FOUND"); failed.append(log_id); continue
+        if log_id in active and not args.allow_active:
+            print(f"  id {log_id}: SKIPPED, the FC is still writing it (this session). "
+                  f"The flight is an earlier id; --allow-active to pull it anyway.")
+            failed.append(log_id); continue
         out = f"logs/log_{log_id}.ulg"
         # Log ids restart per aircraft, so logs/log_25.ulg from a second airframe
         # lands on the first one's file with no warning. Four boards already share
@@ -138,7 +185,9 @@ def main():
                   + (f" and belongs to board ...{owner}" if owner else ""))
             print(f"             rename it, use --out, or pass --force to overwrite.")
             failed.append(log_id); continue
-        if not download(m, log_id, logs[log_id], out):
+        # One retry: a bad download is usually a stale stream, which drain() clears.
+        if not (download(m, log_id, logs[log_id], out)
+                or download(m, log_id, logs[log_id], out)):
             failed.append(log_id)
     if failed:
         # Exit non-zero so a batch failure is visible to whatever called this.
