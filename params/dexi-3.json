@@ -321,6 +321,12 @@
           "value": 1,
           "kind": "int",
           "note": "1 = sensors module votes across IMUs and fails over. PX4 default. Must be 1 whenever EKF2_MULTI_IMU is 0."
+        },
+        {
+          "name": "SENS_IMU_AUTOCAL",
+          "value": 0,
+          "kind": "int",
+          "note": "0 = never overwrite the accel/gyro calibration with the EKF's learned bias. PX4 default is 1: on disarm it saves any learned offset that moved more than 0.05 m/s^2 (VehicleIMU.cpp SensorCalibrationSaveAccel). Hovering on flow alone, that learned bias can be a tilt or flow artifact up to EKF2_ABL_LIM, so it got saved as calibration (one customer board went 0.008 -> 0.239 m/s^2). In-flight bias estimation and the boot gyro cal (IMU_GYRO_CAL_EN) are unaffected."
         }
       ]
     },
