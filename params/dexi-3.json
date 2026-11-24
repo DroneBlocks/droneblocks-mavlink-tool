@@ -280,6 +280,19 @@
         }
       ]
     },
+    "flow-micoair-mtf02p": {
+      "category": "peripherals",
+      "alternativeTo": "tune",
+      "doc": "Flow + range sensor variant: MicoAir MTF-02P, mounted rotated 90 degrees on the DEXI-3. This is the only param that differs from the UP-T201 build. The UP-T201 (SENS_FLOW_ROT=4, in the tune block) stays the default; apply this on top of a kit profile only on aircraft built with the MTF-02P.",
+      "params": [
+        {
+          "name": "SENS_FLOW_ROT",
+          "value": 6,
+          "kind": "int",
+          "note": "MicoAir MTF-02P mounted Yaw 270 on the DEXI-3. The UP-T201 value (4) on this sensor rotates the flow vector 90 degrees and the aircraft drifts away in Position/Offboard."
+        }
+      ]
+    },
     "estimator-arch": {
       "category": "navigation",
       "doc": "Run ONE EKF instance. Multi-EKF gives each IMU its own filter plus a runtime selector; that only works when an absolute position source ties the instances together. Flow supplies velocity, not position, so on a GPS-denied DEXI-3 the instances dead-reckon apart with nothing to pull them back, and every selector switch steps position, velocity and heading at once. IMU voting and failover stay with the sensors module, so a failed IMU is still handled.",
@@ -686,6 +699,27 @@
           "name": "MC_ACRO_P_MAX",
           "value": 720,
           "kind": "float"
+        }
+      ]
+    },
+    {
+      "key": "micoair-mtf02p",
+      "name": "DEXI-3 MicoAir MTF-02P flow sensor",
+      "description": "ADDITIVE - for a DEXI-3 built with the MicoAir MTF-02P flow + range sensor instead of the UP-T201. Writes only SENS_FLOW_ROT = 6. Load your kit profile first, then this.",
+      "additive": true,
+      "details": [
+        "Sets SENS_FLOW_ROT = 6 (sensor mounted rotated 90 degrees)",
+        "Leave this off on UP-T201 aircraft: they need SENS_FLOW_ROT = 4 from the kit profile",
+        "Reboot after loading"
+      ],
+      "blocks": [
+        "flow-micoair-mtf02p"
+      ],
+      "identity": [
+        {
+          "name": "SENS_FLOW_ROT",
+          "value": 6,
+          "kind": "int"
         }
       ]
     }
